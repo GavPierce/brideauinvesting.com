@@ -177,7 +177,7 @@ async function fetchAndLogUsers(channelName: string) {
 
 // Serve an HTML page displaying user visit history and online status
 const server = Bun.serve({
-  port: 3007,
+  port: 3008,
   fetch(req) {
     const url = new URL(req.url);
     if (url.pathname === "/api/visits/chageDates") {
