@@ -57,7 +57,7 @@ const monthNames = [
 const chartData = await Promise.all(
 	channels.map(async (channel) => {
 		const response = await fetch(
-			`http://api.brideauinvesting.com/api/visits/daily/lastSevenDays?channel=${channel}`,
+			`https://api.brideauinvesting.com/api/visits/daily/lastSevenDays?channel=${channel}`,
 		);
 		// Adjust the date range
 		const data = await response.json();
@@ -280,7 +280,7 @@ if (document.getElementById('channel-tabs')) {
 		select.appendChild(option);
 	});
 	const response = await fetch(
-		`http://api.brideauinvesting.com/api/visitsByChannel?channel=bbb`,
+		`https://api.brideauinvesting.com/api/visitsByChannel?channel=bbb`,
 	);
 	// Adjust the date range
 	const data = await response.json();
@@ -330,7 +330,7 @@ if (document.getElementById('channel-tabs')) {
 		}
 
 		const response = await fetch(
-			`http://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}`,
+			`https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}`,
 		);
 		// Adjust the date range
 		let data = await response.json();
@@ -388,12 +388,12 @@ if (document.getElementById('user-input')) {
 
 			// get user data
 			const response = await fetch(
-				`http://api.brideauinvesting.com/api/visitsByUser?user=@${user}`,
+				`https://api.brideauinvesting.com/api/visitsByUser?user=@${user}`,
 			);
 			let data = await response.json();
 			console.log(data);
 			let userData = await fetch(
-				`http://api.brideauinvesting.com/api/user/getByName?name=@${user}`,
+				`https://api.brideauinvesting.com/api/user/getByName?name=@${user}`,
 			);
 
 			let userDataJson = await userData.json();
