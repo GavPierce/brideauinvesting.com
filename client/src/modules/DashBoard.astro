@@ -1,0 +1,170 @@
+---
+/* eslint max-lines: 'off' */
+
+
+const response = await fetch(
+			`http://api.brideauinvesting.com/api/visits/totalWeekly`,
+		);
+		// Adjust the date range
+		const data = await response.json();
+const totalWeekly = data.count;
+---
+
+<div class="px-4 pt-6">
+	<div class="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+		<!-- Main widget -->
+		<div
+			class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800"
+		>
+			<div class="flex items-center justify-between mb-4">
+				<div class="flex-shrink-0">
+					<span
+						class="text-xl font-bold leading-none text-gray-900 sm:text-2xl dark:text-white"
+						>{totalWeekly}</span
+					>
+					<h3 class="text-base font-light text-gray-500 dark:text-gray-400">
+					Visits This Week
+					</h3>
+				</div>
+				<div
+					class="flex items-center justify-end flex-1 text-base font-medium text-green-500 dark:text-green-400"
+				>
+					42%
+					<svg
+						class="w-5 h-5"
+						fill="currentColor"
+						viewBox="0 0 20 20"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<path
+							fill-rule="evenodd"
+							d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
+							clip-rule="evenodd"></path>
+					</svg>
+				</div>
+			</div>
+
+			<!-- NOTE: Charts could be extracted to a generic UI component -->
+			<div id="main-chart"></div>
+			
+		</div>
+		<!--Tabs widget -->
+		<div
+			class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800"
+		>
+
+
+			<ul
+				class="hidden text-sm font-medium text-center text-gray-500 divide-x divide-gray-200 rounded-lg sm:flex dark:divide-gray-600 dark:text-gray-400"
+				id="fullWidthTab"
+				data-tabs-toggle="#fullWidthTabContent"
+				role="tablist"
+			>
+				<li class="w-full">
+					<button
+						id="faq-tab"
+						data-tabs-target="#faq"
+						type="button"
+						role="tab"
+						aria-controls="faq"
+						aria-selected="true"
+						class="inline-block w-full p-4 rounded-tl-lg bg-gray-50 hover:bg-gray-100 focus:outline-none dark:bg-gray-700 dark:hover:bg-gray-600"
+						>Channel Visits</button
+					>
+				</li>
+				<li class="w-full">
+					<button
+						id="about-tab"
+						data-tabs-target="#about"
+						type="button"
+						role="tab"
+						aria-controls="about"
+						aria-selected="false"
+						class="inline-block w-full p-4 rounded-tr-lg bg-gray-50 hover:bg-gray-100 focus:outline-none dark:bg-gray-700 dark:hover:bg-gray-600"
+						>User Visits</button
+					>
+				</li>
+			</ul>
+
+
+			<div
+				id="fullWidthTabContent"
+				class="border-t border-gray-200 dark:border-gray-600"
+			>
+				<div
+					class="hidden pt-4 overflow-y-scroll max-h-[30em]"
+					id="faq"
+					role="tabpanel"
+					aria-labelledby="faq-tab"
+				>
+					<div class="">
+						<select
+							id="channel-tabs"
+							class="bg-gray-50 border-0 border-b border-gray-200 text-gray-900 text-sm rounded-t-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+						>
+							
+						</select>
+					</div>
+					<ul role="list" id="channel-list" class="divide-y divide-gray-200 dark:divide-gray-700 ">
+					
+					</ul>
+				</div>
+				<div
+					class="hidden pt-4"
+					id="about"
+					role="tabpanel"
+					aria-labelledby="about-tab"
+				>
+				<div class="flex items-center justify-center mb-4">
+					<span> @</span><input
+						id="user-input"
+						class="bg-gray-50 border-0 border-b border-gray-200 text-gray-900 text-sm rounded-t-lg focus:ring-primary-500 focus:border-primary-500 block w-1/2 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+					>
+	
+				</input>
+				</div>
+				<div class="text-sm font-medium text-center text-g-500" id="user-info">  </div>
+					<ul role="list" id="user-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+
+						
+					</ul>
+				</div>
+			</div>
+			<!-- Card Footer -->
+		
+		</div>
+	</div>
+	<!--  -->
+</div>
+
+<script>
+	import './DashBoard.client.js';
+</script>
+
+<style is:global>
+	/* chart styles */
+	.apexcharts-tooltip {
+		@apply bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-0 rounded-lg shadow-lg !important;
+	}
+
+	.apexcharts-tooltip .apexcharts-tooltip-title {
+		@apply py-2 px-4 bg-gray-100 dark:bg-gray-600 border-b border-gray-200 dark:border-gray-500 !important;
+	}
+
+	.apexcharts-xaxistooltip {
+		@apply text-gray-500 border-0 bg-white dark:bg-gray-700 dark:text-gray-300 rounded-lg shadow-lg !important;
+	}
+
+	.apexcharts-tooltip .apexcharts-tooltip-text-y-value {
+		@apply dark:text-white;
+	}
+
+	.apexcharts-xaxistooltip-text {
+		@apply font-medium text-sm !important;
+	}
+
+	.apexcharts-xaxistooltip:before,
+	.apexcharts-xaxistooltip:after {
+		@apply border-0 !important;
+	}
+</style>
