@@ -469,7 +469,7 @@ const server = Bun.serve({
       FROM visits
       JOIN channels ON visits.channel_id = channels.id
       WHERE visits.user_id = (SELECT id FROM users WHERE name = ?)
-      ORDER BY visits.timestamp;
+      ORDER BY visits.timestamp DESC;
     `;
       return new Response(JSON.stringify(db.query(query).all(user)), {
         headers: {
