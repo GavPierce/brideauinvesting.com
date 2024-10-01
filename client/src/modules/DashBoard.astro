@@ -2,14 +2,24 @@
 /* eslint max-lines: 'off' */
 
 
+
+---
+<script>
 const response = await fetch(
 			`https://api.brideauinvesting.com/api/visits/totalWeekly`,
 		);
 		// Adjust the date range
 		const data = await response.json();
 const totalWeekly = data.count;
----
+const totalWeeklyElement = document.getElementById('totalWeekly');
+if (totalWeeklyElement) {
+    totalWeeklyElement.innerHTML = totalWeekly;
+}	
 
+
+
+	
+</script>
 <div class="px-4 pt-6">
 	<div class="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
 		<!-- Main widget -->
@@ -19,8 +29,8 @@ const totalWeekly = data.count;
 			<div class="flex items-center justify-between mb-4">
 				<div class="flex-shrink-0">
 					<span
-						class="text-xl font-bold leading-none text-gray-900 sm:text-2xl dark:text-white"
-						>{totalWeekly}</span
+						class="text-xl font-bold leading-none text-gray-900 sm:text-2xl dark:text-white" id="totalWeekly"
+						></span
 					>
 					<h3 class="text-base font-light text-gray-500 dark:text-gray-400">
 					Visits This Week

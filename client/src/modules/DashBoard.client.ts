@@ -54,6 +54,14 @@ const monthNames = [
 	'Nov',
 	'Dec',
 ];
+
+function formatToLocalMonthDay(timestamp: string) {
+	let fullTimeStamp = timestamp + 'T00:00:00';
+	const date = new Date(fullTimeStamp);
+
+	return `${monthNames[date.getMonth()]} - ${date.getDate()}`;
+}
+
 const chartData = await Promise.all(
 	channels.map(async (channel) => {
 		const response = await fetch(
@@ -61,10 +69,9 @@ const chartData = await Promise.all(
 		);
 		// Adjust the date range
 		const data = await response.json();
-
 		data.forEach((visit: any) => {
 			// date as Month - Day
-			let dateFormat = `${visit.visit_date}`;
+			let dateFormat = `${formatToLocalMonthDay(visit.visit_date)}`;
 			if (!xAxisDates.includes(dateFormat)) {
 				xAxisDates.push(dateFormat);
 			}
@@ -74,6 +81,8 @@ const chartData = await Promise.all(
 
 		let dataArray = [] as number[];
 		// Check to see if there is a missing date, and then add 0 to an array
+
+		// first we want to take the data and convert it to local time, and add count to for each day.
 
 		for (let i = 0; i < data.length; i++) {
 			let visit = data[i];
@@ -104,6 +113,9 @@ const chartData = await Promise.all(
 				dataArray.push(visit.visit_count);
 			}
 		}
+		if (channel === 'bbb') {
+			console.log(data);
+		}
 		return {
 			name: channel,
 			data: dataArray, // Extract visit count for each day
@@ -117,6 +129,7 @@ xAxisDates.sort((a, b) => {
 	const dateB = new Date(b);
 	return dateA.getTime() - dateB.getTime();
 });
+console.log(xAxisDates);
 const getMainChartOptions = () => {
 	let mainChartColors = {} as any;
 
@@ -278,7 +291,7 @@ if (document.getElementById('channel-tabs')) {
 		select.appendChild(option);
 	});
 	const response = await fetch(
-		`https://api.brideauinvesting.com/api/visitsByChannel?channel=bbb`,
+		`https://api.brideauinvesting.com/api/usersByChannel?channel=bbb`,
 	);
 	// Adjust the date range
 	const data = await response.json();
@@ -291,21 +304,22 @@ if (document.getElementById('channel-tabs')) {
 	// Add the data to the list
 	data.forEach((visit: any) => {
 		let li = document.createElement('li');
-		li.classList.add('py-3', 'sm:py-4');
+		li.classList.add('py-1', 'sm:py-1');
 
 		// Create the inner HTML dynamically with user info and formatted timestamp
 		li.innerHTML = `
-		  <div class="flex items-center justify-between">
+<button class="toggle-about-btn">
+		  <div class="flex items-center justify-between cursor-pointer">
 			<div class="flex items-center min-w-0">
-			  <div class="ml-3">
-				<p class="font-medium text-gray-900 truncate dark:text-white">
+			  <div class="ml-3 flex">
+				<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
 				  ${visit.name} <!-- Replace with actual username -->
 				</p>
 				<div class="flex items-center justify-end flex-1 text-sm ${
 					visit.online ? 'text-green-500' : 'text-red-500'
-				} dark:text-green-400">
+				} ">
 				  
-				  <span>${formatTime(visit.timestamp)}</span>
+				  <span>${formatTime(visit.last_visit)}</span>
 				  <span class="mx-1">|</span>
 				  <span>${visit.online ? 'Online' : 'Offline'}</span>
 				</div>
@@ -313,8 +327,36 @@ if (document.getElementById('channel-tabs')) {
 			</div>
 
 		  </div>
+		  </button>
 		`;
-
+		li.querySelector('.toggle-about-btn')?.addEventListener(
+			'click',
+			function () {
+				const aboutDiv = document.getElementById('about-tab');
+				// click on tab
+				if (aboutDiv) {
+					aboutDiv.click();
+				}
+				// get name from li -> p with id name
+				const name = li.querySelector('#name')?.textContent;
+				console.log(name);
+				// remove whitespace and @ symbol
+				const nameWithoutWhitespace = name
+					?.replace(/\s/g, '')
+					.replace('@', '') as string;
+				//insert name into userInput
+				const userInput = document.getElementById(
+					'user-input',
+				) as HTMLInputElement;
+				if (userInput) {
+					userInput.value = nameWithoutWhitespace;
+					// send Enter event
+					userInput.dispatchEvent(
+						new KeyboardEvent('keydown', { key: 'Enter' }),
+					);
+				}
+			},
+		);
 		channelList?.appendChild(li);
 	});
 	// conosle log when a channel is selected
@@ -328,12 +370,13 @@ if (document.getElementById('channel-tabs')) {
 		}
 
 		const response = await fetch(
-			`https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}`,
+			`https://api.brideauinvesting.com/api/usersByChannel?channel=${channel}`,
 		);
 		// Adjust the date range
 		let data = await response.json();
 		// jsut get top 500
 		data = data.slice(0, 500);
+		console.log(data);
 		// data format:
 		/**
 		 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
@@ -341,29 +384,59 @@ if (document.getElementById('channel-tabs')) {
 		// Add the data to the list
 		data.forEach((visit: any) => {
 			let li = document.createElement('li');
-			li.classList.add('py-3', 'sm:py-4');
+			li.classList.add('py-1', 'sm:py-2');
 
 			// Create the inner HTML dynamically with user info and formatted timestamp
 			li.innerHTML = `
-			  <div class="flex items-center justify-between">
-				<div class="flex items-center min-w-0">
-				  <div class="ml-3">
-					<p class="font-medium text-gray-900 truncate dark:text-white">
-					  ${visit.name} <!-- Replace with actual username -->
-					</p>
-					<div class="flex items-center justify-end flex-1 text-sm ${
-						visit.online ? 'text-green-500' : 'text-red-500'
-					} dark:text-green-400">
-					  
-					  <span>${formatTime(visit.timestamp)}</span>
-					  <span class="mx-1">|</span>
-					  <span>${visit.online ? 'Online' : 'Offline'}</span>
-					</div>
-				  </div>
-				</div>
-
-			  </div>
-			`;
+			<button class="toggle-about-btn">
+					  <div class="flex items-center justify-between cursor-pointer">
+						<div class="flex items-center min-w-0">
+						  <div class="ml-3 flex">
+							<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
+							  ${visit.name} <!-- Replace with actual username -->
+							</p>
+							<div class="flex items-center justify-end flex-1 text-sm ${
+								visit.online ? 'text-green-500' : 'text-red-500'
+							} ">
+							  
+							  <span>${formatTime(visit.last_visit)}</span>
+							  <span class="mx-1">|</span>
+							  <span>${visit.online ? 'Online' : 'Offline'}</span>
+							</div>
+						  </div>
+						</div>
+			
+					  </div>
+					  </button>
+					`;
+			li.querySelector('.toggle-about-btn')?.addEventListener(
+				'click',
+				function () {
+					const aboutDiv = document.getElementById('about-tab');
+					// click on tab
+					if (aboutDiv) {
+						aboutDiv.click();
+					}
+					// get name from li -> p with id name
+					const name = li.querySelector('#name')?.textContent;
+					console.log(name);
+					// remove whitespace and @ symbol
+					const nameWithoutWhitespace = name
+						?.replace(/\s/g, '')
+						.replace('@', '') as string;
+					//insert name into userInput
+					const userInput = document.getElementById(
+						'user-input',
+					) as HTMLInputElement;
+					if (userInput) {
+						userInput.value = nameWithoutWhitespace;
+						// send Enter event
+						userInput.dispatchEvent(
+							new KeyboardEvent('keydown', { key: 'Enter' }),
+						);
+					}
+				},
+			);
 
 			channelList?.appendChild(li);
 		});

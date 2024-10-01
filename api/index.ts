@@ -314,18 +314,23 @@ const server = Bun.serve({
     }
     if (url.pathname === "/api/visits/daily/lastSevenDays") {
       const channel = url.searchParams.get("channel");
-
+      let timeZone = url.searchParams.get("timeZone");
+      if (!timeZone) {
+        timeZone = "CST";
+      }
       if (!channel) {
         return new Response("Missing parameters", { status: 400 });
       }
       const query = `
-        SELECT DATE(timestamp) as visit_date, COUNT(*) AS visit_count
-        FROM visits
-        WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
+      SELECT 
+        strftime('%Y-%m-%d', timestamp, '-6 hours') AS visit_date,  -- Convert UTC to CST
+        COUNT(*) AS visit_count
+      FROM visits
+      WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
         AND timestamp > DATE('now', '-7 days')
-        GROUP BY visit_date
-        ORDER BY visit_date;
-      `;
+      GROUP BY visit_date
+      ORDER BY visit_date;
+    `;
 
       return new Response(JSON.stringify(db.query(query).all(channel)), {
         headers: {
@@ -436,16 +441,17 @@ const server = Bun.serve({
       }
 
       const query = `
-        SELECT *
-        FROM users
-        WHERE id IN (
-          SELECT user_id
-          FROM visits
-          WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
-          GROUP BY user_id
-          HAVING COUNT(*) > 1
-        );
-      `;
+      SELECT u.*, v.last_visit
+      FROM users u
+      JOIN (
+        SELECT user_id, MAX(timestamp) AS last_visit
+        FROM visits
+        WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
+        GROUP BY user_id
+        HAVING COUNT(*) > 1
+      ) v ON u.id = v.user_id
+       ORDER BY last_visit DESC;
+    `;
 
       return new Response(JSON.stringify(db.query(query).all(channel)), {
         headers: {
