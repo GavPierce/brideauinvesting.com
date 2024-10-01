@@ -281,9 +281,170 @@ function formatTime(timestamp: string) {
 	let time = new Date(timestamp);
 	return time.toLocaleString('en-US', options);
 }
-if (document.getElementById('channel-tabs')) {
+if (document.getElementById('channel-tabs1')) {
 	// add options for each channel
-	let select = document.getElementById('channel-tabs') as HTMLSelectElement;
+	let select = document.getElementById('channel-tabs1') as HTMLSelectElement;
+	channels.forEach((channel) => {
+		let option = document.createElement('option');
+		option.value = channel;
+		option.text = channel;
+		select.appendChild(option);
+	});
+	const response = await fetch(
+		`https://api.brideauinvesting.com/api/visitsByChannel?channel=bbb`,
+	);
+	// Adjust the date range
+	const data = await response.json();
+	let channelList = document.getElementById('visits-list');
+
+	// data format:
+	/**
+	 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
+	 */
+	// Add the data to the list
+	data.forEach((visit: any) => {
+		let li = document.createElement('li');
+		li.classList.add('py-1', 'sm:py-1');
+
+		// Create the inner HTML dynamically with user info and formatted timestamp
+		li.innerHTML = `
+<button class="toggle-about-btn">
+		  <div class="flex items-center justify-between cursor-pointer hover:bg-blue-200">
+			<div class="flex items-center min-w-0">
+			  <div class="ml-3 flex">
+				<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
+				  ${visit.name} <!-- Replace with actual username -->
+				</p>
+				<div class="flex items-center justify-end flex-1 text-sm ${
+					visit.online ? 'text-green-500' : 'text-red-500'
+				} ">
+				  
+				  <span>${formatTime(visit.timestamp)}</span>
+				  <span class="mx-1">|</span>
+				  <span>${visit.online ? 'Online' : 'Offline'}</span>
+				</div>
+			  </div>
+			</div>
+
+		  </div>
+		  </button>
+		`;
+		li.querySelector('.toggle-about-btn')?.addEventListener(
+			'click',
+			function () {
+				const aboutDiv = document.getElementById('about-tab');
+				// click on tab
+				if (aboutDiv) {
+					aboutDiv.click();
+				}
+				// get name from li -> p with id name
+				const name = li.querySelector('#name')?.textContent;
+				console.log(name);
+				// remove whitespace and @ symbol
+				const nameWithoutWhitespace = name
+					?.replace(/\s/g, '')
+					.replace('@', '') as string;
+				//insert name into userInput
+				const userInput = document.getElementById(
+					'user-input',
+				) as HTMLInputElement;
+				if (userInput) {
+					userInput.value = nameWithoutWhitespace;
+					// send Enter event
+					userInput.dispatchEvent(
+						new KeyboardEvent('keydown', { key: 'Enter' }),
+					);
+				}
+			},
+		);
+		channelList?.appendChild(li);
+	});
+	// conosle log when a channel is selected
+	select.addEventListener('change', async (event) => {
+		let channel = (event.target as HTMLSelectElement).value;
+
+		// remove all LI items in id channel-list
+		let channelList = document.getElementById('visits-list');
+		while (channelList?.firstChild) {
+			channelList.removeChild(channelList.firstChild);
+		}
+
+		const response = await fetch(
+			`https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}`,
+		);
+		// Adjust the date range
+		let data = await response.json();
+		// jsut get top 500
+		data = data.slice(0, 500);
+		console.log(data);
+		// data format:
+		/**
+		 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
+		 */
+		// Add the data to the list
+		data.forEach((visit: any) => {
+			let li = document.createElement('li');
+			li.classList.add('py-1', 'sm:py-2');
+
+			// Create the inner HTML dynamically with user info and formatted timestamp
+			li.innerHTML = `
+			<button class="toggle-about-btn">
+					  <div class="flex items-center justify-between cursor-pointer hover:bg-blue-200">
+						<div class="flex items-center min-w-0">
+						  <div class="ml-3 flex">
+							<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
+							  ${visit.name} <!-- Replace with actual username -->
+							</p>
+							<div class="flex items-center justify-end flex-1 text-sm ${
+								visit.online ? 'text-green-500' : 'text-red-500'
+							} ">
+							  
+							  <span>${formatTime(visit.timestamp)}</span>
+							  <span class="mx-1">|</span>
+							  <span>${visit.online ? 'Online' : 'Offline'}</span>
+							</div>
+						  </div>
+						</div>
+			
+					  </div>
+					  </button>
+					`;
+			li.querySelector('.toggle-about-btn')?.addEventListener(
+				'click',
+				function () {
+					const aboutDiv = document.getElementById('about-tab');
+					// click on tab
+					if (aboutDiv) {
+						aboutDiv.click();
+					}
+					// get name from li -> p with id name
+					const name = li.querySelector('#name')?.textContent;
+					console.log(name);
+					// remove whitespace and @ symbol
+					const nameWithoutWhitespace = name
+						?.replace(/\s/g, '')
+						.replace('@', '') as string;
+					//insert name into userInput
+					const userInput = document.getElementById(
+						'user-input',
+					) as HTMLInputElement;
+					if (userInput) {
+						userInput.value = nameWithoutWhitespace;
+						// send Enter event
+						userInput.dispatchEvent(
+							new KeyboardEvent('keydown', { key: 'Enter' }),
+						);
+					}
+				},
+			);
+
+			channelList?.appendChild(li);
+		});
+	});
+}
+if (document.getElementById('channel-tabs2')) {
+	// add options for each channel
+	let select = document.getElementById('channel-tabs2') as HTMLSelectElement;
 	channels.forEach((channel) => {
 		let option = document.createElement('option');
 		option.value = channel;
@@ -309,7 +470,7 @@ if (document.getElementById('channel-tabs')) {
 		// Create the inner HTML dynamically with user info and formatted timestamp
 		li.innerHTML = `
 <button class="toggle-about-btn">
-		  <div class="flex items-center justify-between cursor-pointer">
+		  <div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
 			<div class="flex items-center min-w-0">
 			  <div class="ml-3 flex">
 				<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
@@ -389,7 +550,7 @@ if (document.getElementById('channel-tabs')) {
 			// Create the inner HTML dynamically with user info and formatted timestamp
 			li.innerHTML = `
 			<button class="toggle-about-btn">
-					  <div class="flex items-center justify-between cursor-pointer">
+					  <div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
 						<div class="flex items-center min-w-0">
 						  <div class="ml-3 flex">
 							<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
@@ -442,11 +603,10 @@ if (document.getElementById('channel-tabs')) {
 		});
 	});
 }
-
 if (document.getElementById('user-input')) {
 	let userInput = document.getElementById('user-input') as HTMLInputElement;
 	let userList = document.getElementById('user-list');
-	let userInfo = document.getElementById('user-info');
+	
 	userInput.addEventListener('keydown', async (event: any) => {
 		// if its enter
 		if (event.key === 'Enter') {
@@ -470,9 +630,14 @@ if (document.getElementById('user-input')) {
 			let userDataJson = await userData.json();
 			console.log(userDataJson);
 
-			userInfo.classList.add(
-				userDataJson[0].online ? 'text-green-500' : 'text-red-500',
-			);
+			if (userDataJson[0].online) {
+				userInfo.innerHTML = 'Online';
+				userInfo.classList.add('text-green-500');
+				userInfo.classList.remove('text-red-500');
+			} else {
+				userInfo.classList.add('text-red-500');
+				userInfo.classList.remove('text-green-500');
+			}
 			userInfo.innerHTML = userDataJson[0].online ? 'Online' : 'Offline';
 			// Add the data to the list
 			data.forEach((visit: any) => {
