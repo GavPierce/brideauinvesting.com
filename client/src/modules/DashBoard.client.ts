@@ -64,9 +64,7 @@ const chartData = await Promise.all(
 
 		data.forEach((visit: any) => {
 			// date as Month - Day
-			let dateFormat = `${monthNames[new Date(visit.visit_date).getMonth()]}  ${
-				new Date(visit.visit_date).getDate() + 1
-			}`;
+			let dateFormat = `${visit.visit_date}`;
 			if (!xAxisDates.includes(dateFormat)) {
 				xAxisDates.push(dateFormat);
 			}
