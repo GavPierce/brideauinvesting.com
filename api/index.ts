@@ -448,7 +448,6 @@ const server = Bun.serve({
         FROM visits
         WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
         GROUP BY user_id
-        HAVING COUNT(*) > 1
       ) v ON u.id = v.user_id
        ORDER BY last_visit DESC;
     `;
