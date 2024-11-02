@@ -2,23 +2,11 @@
 
 import ApexCharts from 'apexcharts';
 
-const channels = [
-	'bbb',
-	'bg',
-	'gr',
-	'gug',
-	'hmr',
-	'gldr',
-	'sbmi',
-	'abi',
-	'auu',
-	'fkm',
-	'gshr',
-	'ipt',
-	'pega',
-	'sdcu',
-	'sgz',
-];
+let responseData = await fetch('https://api.brideauinvesting.com/api/getChannels');
+let channelObject = await responseData.json() as {channels: string[]};
+let channels = channelObject.channels as string[];
+console.log(channels)
+
 const getColorForChannel = (channel: string) => {
 	const colors = {
 		bbb: '#E2E8F0',
@@ -61,6 +49,7 @@ function formatToLocalMonthDay(timestamp: string) {
 
 	return `${monthNames[date.getMonth()]} - ${date.getDate()}`;
 }
+//
 
 const chartData = await Promise.all(
 	channels.map(async (channel) => {
@@ -113,9 +102,7 @@ const chartData = await Promise.all(
 				dataArray.push(visit.visit_count);
 			}
 		}
-		if (channel === 'bbb') {
-			console.log(data);
-		}
+
 		return {
 			name: channel,
 			data: dataArray, // Extract visit count for each day
@@ -129,7 +116,6 @@ xAxisDates.sort((a, b) => {
 	const dateB = new Date(b);
 	return dateA.getTime() - dateB.getTime();
 });
-console.log(xAxisDates);
 const getMainChartOptions = () => {
 	let mainChartColors = {} as any;
 
@@ -282,6 +268,8 @@ function formatTime(timestamp: string) {
 	return time.toLocaleString('en-US', options);
 }
 if (document.getElementById('channel-tabs1')) {
+	// update channelList
+
 	// add options for each channel
 	let select = document.getElementById('channel-tabs1') as HTMLSelectElement;
 	channels.forEach((channel) => {
@@ -339,7 +327,6 @@ if (document.getElementById('channel-tabs1')) {
 				}
 				// get name from li -> p with id name
 				const name = li.querySelector('#name')?.textContent;
-				console.log(name);
 				// remove whitespace and @ symbol
 				const nameWithoutWhitespace = name
 					?.replace(/\s/g, '')
@@ -376,7 +363,6 @@ if (document.getElementById('channel-tabs1')) {
 		let data = await response.json();
 		// jsut get top 500
 		data = data.slice(0, 500);
-		console.log(data);
 		// data format:
 		/**
 		 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
@@ -419,7 +405,6 @@ if (document.getElementById('channel-tabs1')) {
 					}
 					// get name from li -> p with id name
 					const name = li.querySelector('#name')?.textContent;
-					console.log(name);
 					// remove whitespace and @ symbol
 					const nameWithoutWhitespace = name
 						?.replace(/\s/g, '')
@@ -500,7 +485,6 @@ if (document.getElementById('channel-tabs2')) {
 				}
 				// get name from li -> p with id name
 				const name = li.querySelector('#name')?.textContent;
-				console.log(name);
 				// remove whitespace and @ symbol
 				const nameWithoutWhitespace = name
 					?.replace(/\s/g, '')
@@ -537,7 +521,6 @@ if (document.getElementById('channel-tabs2')) {
 		let data = await response.json();
 		// jsut get top 500
 		data = data.slice(0, 500);
-		console.log(data);
 		// data format:
 		/**
 		 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
@@ -580,7 +563,6 @@ if (document.getElementById('channel-tabs2')) {
 					}
 					// get name from li -> p with id name
 					const name = li.querySelector('#name')?.textContent;
-					console.log(name);
 					// remove whitespace and @ symbol
 					const nameWithoutWhitespace = name
 						?.replace(/\s/g, '')
@@ -606,7 +588,7 @@ if (document.getElementById('channel-tabs2')) {
 if (document.getElementById('user-input')) {
 	let userInput = document.getElementById('user-input') as HTMLInputElement;
 	let userList = document.getElementById('user-list');
-	
+
 	userInput.addEventListener('keydown', async (event: any) => {
 		// if its enter
 		if (event.key === 'Enter') {
@@ -622,23 +604,24 @@ if (document.getElementById('user-input')) {
 				`https://api.brideauinvesting.com/api/visitsByUser?user=@${user}`,
 			);
 			let data = await response.json();
-			console.log(data);
 			let userData = await fetch(
 				`https://api.brideauinvesting.com/api/user/getByName?name=@${user}`,
 			);
 
 			let userDataJson = await userData.json();
-			console.log(userDataJson);
-
-			if (userDataJson[0].online) {
+			let isAnyUserOnline = userDataJson.some(
+				(user: any) => user.online,
+			)
+			if (isAnyUserOnline) {
 				userInfo.innerHTML = 'Online';
 				userInfo.classList.add('text-green-500');
 				userInfo.classList.remove('text-red-500');
 			} else {
+				userInfo.innerHTML = 'Offline';
+
 				userInfo.classList.add('text-red-500');
 				userInfo.classList.remove('text-green-500');
 			}
-			userInfo.innerHTML = userDataJson[0].online ? 'Online' : 'Offline';
 			// Add the data to the list
 			data.forEach((visit: any) => {
 				let li = document.createElement('li');

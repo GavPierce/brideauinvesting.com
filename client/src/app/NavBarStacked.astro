@@ -1,82 +1,157 @@
 ---
 ---
 
+<script>
+	let addChannelButton = document.getElementById('add-channel');
+	let submitButton = document.getElementById('submit');
+	let modal = document.getElementById('add-channel-modal');
+	let pinError = document.getElementById('pin-error');
+	let successMessage = document.getElementById('success-message');
+	if (addChannelButton) {
+		addChannelButton.addEventListener('click', () => {
+			if (modal != null) {
+				modal.classList.toggle('show-modal');
+				modal.classList.toggle('hide-modal');
+			}
+		});
+	}
+
+	if (modal) {
+		modal.addEventListener('click', (event) => {
+			if (modal != null && event.target === modal) {
+				modal.classList.toggle('show-modal');
+				modal.classList.toggle('hide-modal');
+
+				if (pinError && successMessage) {
+					pinError.innerHTML = '';
+					successMessage.innerHTML = '';
+				}
+			}
+		});
+	}
+	if (submitButton) {
+		let channelList = document.getElementById(
+			'channel-list-add',
+		) as HTMLInputElement;
+		let pin = document.getElementById('pin') as HTMLInputElement;
+
+		submitButton.addEventListener('click', async () => {
+			let channelListValue = channelList?.value;
+			let pinValue = pin?.value;
+			if (pinValue == '') {
+				if (pinError) {
+					pinError.innerHTML = 'Please enter authorization pin';
+				}
+			} else {
+				let cleanedChannelList = cleanChannelList(channelListValue);
+				const response = await fetch(`https://api.brideauinvesting.com/api/addChannels`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						channels: cleanedChannelList,
+						pin: pinValue,
+					}),
+				});
+
+				if (response.ok) {
+					let data = await response.json();
+					if (successMessage) {
+						successMessage.innerHTML =
+							'Success! ' + data.channels.length + ' channels added';
+					}
+					if (pinError) {
+						pinError.innerHTML = '';
+					}
+				} else {
+					let errorText = await response.text();
+					if (pinError) {
+						pinError.innerHTML = errorText;
+					}
+				}
+			}
+		});
+	}
+
+	let cleanChannelList = (list: string) => {
+		// remove all $
+		list = list.replace(/\$/g, '');
+		// all lower case
+		list = list.toLowerCase();
+		// remove any spaces
+		list = list.replace(/\s/g, '');
+		// split into array
+		// return array of channels
+		return list.split(',');
+	};
+</script>
+<style>
+	.show-modal {
+		display: block;
+	}
+	.hide-modal {
+		display: none;
+	}
+</style>
+
 <nav
 	class="fixed z-50 w-full bg-white border-b border-gray-200 sm:py-2 dark:bg-gray-800 dark:border-gray-700"
 >
-	<div class="container py-3 mx-auto">
-		<div class="flex items-center justify-center">
+	<div class="container p-3 px-5 mx-auto">
+		<div class="flex items-center justify-between">
 			<div class="flex items-center justify-center">
-				
-					<img
-						src='./brideau-logo.svg'
-						class="h-10 mr-3"
-						
-					/>
-					<span
+				<img src="./brideau-logo.svg" class="h-10 mr-3" />
+				<span
 					style="font-family: 'Oleo Script', cursive;"
-						class="self-center text-2xl text-green-600 font-semibold whitespace-nowrap dark:text-white"
-						>Brideau Investing</span
-					>
+					class="self-center text-2xl text-green-600 font-semibold whitespace-nowrap dark:text-white"
+					>Brideau Investing.</span
+				>
 			</div>
-
-
-			
+			<button
+				class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+				id="add-channel"
+			>
+				Add Channel
+			</button>
 		</div>
 	</div>
-	<!-- Mobile menu -->
-	<div class="hidden sm:hidden" id="mobile-menu">
-		<ul class="pt-2">
-			<li>
-				<a
-					href="#"
-					class="block py-2 pl-3 pr-4 text-base font-normal text-gray-900 bg-gray-100 dark:bg-gray-700 dark:text-white"
-					>Dashboard</a
-				>
-			</li>
-			<li>
-				<a
-					href="#"
-					class="block px-3 py-2 text-base font-normal text-gray-600 border-b border-gray-100 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-white"
-					>Team</a
-				>
-			</li>
-			<li>
-				<a
-					href="#"
-					class="block px-3 py-2 text-base font-normal text-gray-600 border-b border-gray-100 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-white"
-					>Projects</a
-				>
-			</li>
-			<li>
-				<a
-					href="#"
-					class="block px-3 py-2 text-base font-normal text-gray-600 border-b border-gray-100 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-white"
-					>Calendar
-				</a>
-			</li>
-			<li class="block">
-				<a
-					href="#"
-					class="inline-flex items-center w-full px-3 py-2 text-base font-normal text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-white"
-				>
-					<svg
-						class="w-5 h-5 mr-2"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-						></path>
-					</svg>
-					Login/Register
-				</a>
-			</li>
-		</ul>
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hide-modal"
+		id="add-channel-modal"
+	>
+		<div class="bg-white p-6 rounded-lg shadow-lg w-1/3 m-auto mt-20">
+			<h2 class="text-xl font-bold mb-4">Add New Channel</h2>
+			<input
+				type="text"
+				class="border border-gray-400 px-3 py-2 rounded-md w-full mb-1"
+				placeholder="Enter channel name, or list"
+				id="channel-list-add"
+			/>
+			<span class="text-gray-500 text-sm mb-2 italic font-thin"
+				>Add one or a comma separated list, with or without the "$" symbol</span
+			>
+			<br />
+			<span class="text-gray-500 text-sm mb-2 italic font-thin"
+				>Example: $hmr, bbb, utc, $lmr</span
+			>
+			<br />
+			<input
+				type="text"
+				class="border border-gray-400 px-3 py-2 rounded-md w-1/4 mt-4 mb-4"
+				placeholder="Pin"
+				id="pin"
+			/>
+			<span class="text-red-500 text-sm mb-2 italic font-thin" id="pin-error"
+			></span>
+			<br />
+
+			<button
+				class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+				id="submit">Submit</button
+			>
+			<span class="text-green-500 text-sm mb-2 font-bold" id="success-message"
+			></span>
+		</div>
 	</div>
 </nav>

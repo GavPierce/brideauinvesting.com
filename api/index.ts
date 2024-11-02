@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import fs from "fs";
 
 // Initialize in-memory SQLite database (you can replace ":memory:" with a file path for persistent storage)
 const db = new Database("database.db");
@@ -178,27 +179,10 @@ async function fetchAndLogUsers(channelName: string) {
 // Serve an HTML page displaying user visit history and online status
 const server = Bun.serve({
   port: 3008,
-  fetch(req) {
+  async fetch(req) {
     const url = new URL(req.url);
     if (url.pathname === "/api/visits/chageDates") {
       // add 100 random visits, 50 for yesterday and 50 for tomorrow, randomly for all channels and users
-      const randomChannels = [
-        "bbb",
-        "bg",
-        "gr",
-        "gug",
-        "hmr",
-        "gldr",
-        "sbmi",
-        "abi",
-        "auu",
-        "fkm",
-        "gshr",
-        "ipt",
-        "pega",
-        "sdcu",
-        "sgz",
-      ];
 
       for (let i = 0; i < 2000; i++) {
         const randomChannel = "gshr";
@@ -251,7 +235,6 @@ const server = Bun.serve({
       DELETE FROM visits
       WHERE timestamp >= datetime('now', 'localtime', '+1 day');
       `;
-      console.log("Clearing Future Visits");
       // console log how many visits were deleted
       let data = db.query(query).all();
       return new Response(JSON.stringify({ data }), {
@@ -513,30 +496,157 @@ const server = Bun.serve({
       });
     }
 
+    if (url.pathname === "/api/addChannels") {
+      if (req.method === "OPTIONS") {
+        // Handle the preflight request
+        return new Response(null, {
+          headers: {
+            "Access-Control-Allow-Origin": "*", // Allow all origins
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+            "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+          },
+        });
+      }
+      if (req.method === "POST") {
+        const body = (await req.json()) as any;
+        const channels = body.channels;
+        const pin = body.pin;
+
+        if (channels == null || channels.length == 0 || channels[0] == "") {
+          return new Response("Channel list is empty", {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*", // Allow all origins
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+              "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+            },
+          });
+        }
+        if (pin != 4756) {
+          return new Response("Incorrect Auth Pin", {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*", // Allow all origins
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+              "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+            },
+          });
+        }
+
+        // 1. Read the existing data from the JSON file
+        const data = await fs.readFileSync("channels.json", "utf8");
+        const existingStrings = JSON.parse(data);
+
+        // 2. Filter out strings that already exist
+        const uniqueNewStrings = channels.filter(
+          (newString: any) => !existingStrings.includes(newString)
+        );
+
+        // 3. Add the unique strings to the existing array
+        const updatedStrings = [...existingStrings, ...uniqueNewStrings];
+
+        // 4. Write the updated array back to the JSON file
+        await fs.writeFileSync(
+          "channels.json",
+          JSON.stringify(updatedStrings, null, 2)
+        );
+
+        return new Response(JSON.stringify({ channels: channels }), {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*", // Allow all origins
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+            "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+          },
+        });
+      }
+    }
+    if (url.pathname === "/api/removeChannels") {
+      if (req.method === "OPTIONS") {
+        // Handle the preflight request
+        return new Response(null, {
+          headers: {
+            "Access-Control-Allow-Origin": "*", // Allow all origins
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+            "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+          },
+        });
+      }
+      if (req.method === "POST") {
+        const body = (await req.json()) as any;
+        const channels = body.channels;
+        const pin = body.pin;
+        if (channels == null || channels.length == 0 || channels[0] == "") {
+          return new Response("Channel list is empty", {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*", // Allow all origins
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+              "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+            },
+          });
+        }
+        if (pin != 4756) {
+          return new Response("Incorrect Auth Pin", {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*", // Allow all origins
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+              "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+            },
+          });
+        }
+
+        // 1. Read the existing data from the JSON file
+        const data = await fs.readFileSync("channels.json", "utf8");
+        const existingStrings = JSON.parse(data);
+
+        // remove the strings from the existing array
+        const updatedStrings = existingStrings.filter(
+          (existingString: any) => !channels.includes(existingString)
+        );
+
+        // 4. Write the updated array back to the JSON file
+        await fs.writeFileSync(
+          "channels.json",
+          JSON.stringify(updatedStrings, null, 2)
+        );
+
+        return new Response(JSON.stringify({ channels: channels }), {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*", // Allow all origins
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+            "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+          },
+        });
+      }
+    }
+    
+    if (url.pathname === "/api/getChannels") {
+      const data = await fs.readFileSync("channels.json", "utf8");
+      return new Response(JSON.stringify({ channels: JSON.parse(data) }), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // Allow all origins
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
+          "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+        },
+      });
+    }
     return new Response("Not Found", { status: 404 });
   },
 });
 
-// Fetch data for 14 channels every 30 seconds
-const channels = [
-  "bbb",
-  "bg",
-  "gr",
-  "gug",
-  "hmr",
-  "gldr",
-  "sbmi",
-  "abi",
-  "auu",
-  "fkm",
-  "gshr",
-  "ipt",
-  "pega",
-  "sdcu",
-  "sgz",
-];
-
 setInterval(async () => {
+  // get channel from channels.json
+  const channels = JSON.parse(
+    fs.readFileSync("channels.json", "utf8")
+  ) as string[];
   channels.forEach(async (channel) => await fetchAndLogUsers(channel));
   updateOnlineStatus(activeUserIds);
   activeUserIds = [];
