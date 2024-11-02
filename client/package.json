@@ -1,6 +1,6 @@
 {
-	"name": "flowbite-astro-admin-dashboard",
-	"version": "1.0.2",
+	"name": "Brideau Investing",
+	"version": "1.2.0",
 	"private": "true",
 	"description": "Investing Tool by Brideau Investing",
 	"keywords": [
@@ -17,16 +17,8 @@
 		"astro-template",
 		"javascript"
 	],
-	"homepage": "https://flowbite.com",
-	"bugs": "https://github.com/themesberg/flowbite-astro-admin-dashboard/issues",
-	"repository": "https://github.com/themesberg/flowbite-astro-admin-dashboard.git",
 	"license": "MIT",
-	"author": "Bergside Inc.",
-	"contributors": [
-		"Zoltán Szőgyényi <https://twitter.com/zoltanszogyenyi>",
-		"Robert Tanislav <https://twitter.com/roberttanislav>",
-		"Julian Cataldo <https://twitter.com/Julian_Cataldo>"
-	],
+	"author": "Gavin Pierce",
 	"type": "module",
 	"scripts": {
 		"astro": "astro",
