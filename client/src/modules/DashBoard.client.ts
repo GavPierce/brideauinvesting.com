@@ -73,11 +73,17 @@ const chartData = await Promise.all(
 
 		// first we want to take the data and convert it to local time, and add count to for each day.
 
+		let earliestDate = Infinity;
+		let date7DaysAgo = new Date();
+		date7DaysAgo.setDate(date7DaysAgo.getDate() - 8);
 		for (let i = 0; i < data.length; i++) {
 			let visit = data[i];
 
 			let visitDate = new Date(visit.visit_date);
 
+			if (visitDate.getTime() < earliestDate) {
+				earliestDate = visitDate.getTime();
+			}
 			let nextVisitDate = new Date();
 			if (i < data.length - 1) {
 				nextVisitDate = new Date(data[i + 1]?.visit_date);
@@ -103,6 +109,11 @@ const chartData = await Promise.all(
 			}
 		}
 
+		while (earliestDate > date7DaysAgo.getTime()) {
+			earliestDate -= 24 * 60 * 60 * 1000;
+			dataArray.unshift(0);
+		}
+		
 		return {
 			name: channel,
 			data: dataArray, // Extract visit count for each day
