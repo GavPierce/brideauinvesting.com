@@ -51,220 +51,220 @@ function formatToLocalMonthDay(timestamp: string) {
 }
 //
 
-const chartData = await Promise.all(
-	channels.map(async (channel) => {
-		const response = await fetch(
-			`https://api.brideauinvesting.com/api/visits/daily/lastSevenDays?channel=${channel}`,
-		);
-		// Adjust the date range
-		const data = await response.json();
-		data.forEach((visit: any) => {
-			// date as Month - Day
-			let dateFormat = `${formatToLocalMonthDay(visit.visit_date)}`;
-			if (!xAxisDates.includes(dateFormat)) {
-				xAxisDates.push(dateFormat);
-			}
-		});
-		// Format the data for ApexCharts
-		// it is possible that the data returned might be missing a date if no visits have been made on that day
+// const chartData = await Promise.all(
+// 	channels.map(async (channel) => {
+// 		const response = await fetch(
+// 			`https://api.brideauinvesting.com/api/visits/daily/lastSevenDays?channel=${channel}`,
+// 		);
+// 		// Adjust the date range
+// 		const data = await response.json();
+// 		data.forEach((visit: any) => {
+// 			// date as Month - Day
+// 			let dateFormat = `${formatToLocalMonthDay(visit.visit_date)}`;
+// 			if (!xAxisDates.includes(dateFormat)) {
+// 				xAxisDates.push(dateFormat);
+// 			}
+// 		});
+// 		// Format the data for ApexCharts
+// 		// it is possible that the data returned might be missing a date if no visits have been made on that day
 
-		let dataArray = [] as number[];
-		// Check to see if there is a missing date, and then add 0 to an array
+// 		let dataArray = [] as number[];
+// 		// Check to see if there is a missing date, and then add 0 to an array
 
-		// first we want to take the data and convert it to local time, and add count to for each day.
+// 		// first we want to take the data and convert it to local time, and add count to for each day.
 
-		let earliestDate = Infinity;
-		let date7DaysAgo = new Date();
-		date7DaysAgo.setDate(date7DaysAgo.getDate() - 8);
-		for (let i = 0; i < data.length; i++) {
-			let visit = data[i];
+// 		let earliestDate = Infinity;
+// 		let date7DaysAgo = new Date();
+// 		date7DaysAgo.setDate(date7DaysAgo.getDate() - 8);
+// 		for (let i = 0; i < data.length; i++) {
+// 			let visit = data[i];
 
-			let visitDate = new Date(visit.visit_date);
+// 			let visitDate = new Date(visit.visit_date);
 
-			if (visitDate.getTime() < earliestDate) {
-				earliestDate = visitDate.getTime();
-			}
-			let nextVisitDate = new Date();
-			if (i < data.length - 1) {
-				nextVisitDate = new Date(data[i + 1]?.visit_date);
-			}
+// 			if (visitDate.getTime() < earliestDate) {
+// 				earliestDate = visitDate.getTime();
+// 			}
+// 			let nextVisitDate = new Date();
+// 			if (i < data.length - 1) {
+// 				nextVisitDate = new Date(data[i + 1]?.visit_date);
+// 			}
 
-			// check to see if there is more then 24 hours between visits
+// 			// check to see if there is more then 24 hours between visits
 
-			if (nextVisitDate.getTime() - visitDate.getTime() > 24 * 60 * 60 * 1000) {
-				// the count and then another count of zero for the next day
-				dataArray.push(visit.visit_count);
+// 			if (nextVisitDate.getTime() - visitDate.getTime() > 24 * 60 * 60 * 1000) {
+// 				// the count and then another count of zero for the next day
+// 				dataArray.push(visit.visit_count);
 
-				// get how many days between
-				let gap =
-					(nextVisitDate.getTime() - visitDate.getTime()) /
-					(24 * 60 * 60 * 1000);
+// 				// get how many days between
+// 				let gap =
+// 					(nextVisitDate.getTime() - visitDate.getTime()) /
+// 					(24 * 60 * 60 * 1000);
 
-				for (let j = 1; j < gap; j++) {
-					dataArray.push(0);
-				}
-			} else {
-				// there's no gap we can just add the count and proceed to next day
-				dataArray.push(visit.visit_count);
-			}
-		}
+// 				for (let j = 1; j < gap; j++) {
+// 					dataArray.push(0);
+// 				}
+// 			} else {
+// 				// there's no gap we can just add the count and proceed to next day
+// 				dataArray.push(visit.visit_count);
+// 			}
+// 		}
 
-		while (earliestDate > date7DaysAgo.getTime()) {
-			earliestDate -= 24 * 60 * 60 * 1000;
-			dataArray.unshift(0);
-		}
+// 		while (earliestDate > date7DaysAgo.getTime()) {
+// 			earliestDate -= 24 * 60 * 60 * 1000;
+// 			dataArray.unshift(0);
+// 		}
 		
-		return {
-			name: channel,
-			data: dataArray, // Extract visit count for each day
-			color: getColorForChannel(channel), // Helper function to get the color for each channel
-		};
-	}),
-);
+// 		return {
+// 			name: channel,
+// 			data: dataArray, // Extract visit count for each day
+// 			color: getColorForChannel(channel), // Helper function to get the color for each channel
+// 		};
+// 	}),
+// );
 //sort axis dates chronological
 xAxisDates.sort((a, b) => {
 	const dateA = new Date(a);
 	const dateB = new Date(b);
 	return dateA.getTime() - dateB.getTime();
 });
-const getMainChartOptions = () => {
-	let mainChartColors = {} as any;
+// const getMainChartOptions = () => {
+// 	let mainChartColors = {} as any;
 
-	if (document.documentElement.classList.contains('dark')) {
-		mainChartColors = {
-			borderColor: '#374151',
-			labelColor: '#9CA3AF',
-			opacityFrom: 0,
-			opacityTo: 0.15,
-		};
-	} else {
-		mainChartColors = {
-			borderColor: '#F3F4F6',
-			labelColor: '#6B7280',
-			opacityFrom: 0.45,
-			opacityTo: 0,
-		};
-	}
+// 	if (document.documentElement.classList.contains('dark')) {
+// 		mainChartColors = {
+// 			borderColor: '#374151',
+// 			labelColor: '#9CA3AF',
+// 			opacityFrom: 0,
+// 			opacityTo: 0.15,
+// 		};
+// 	} else {
+// 		mainChartColors = {
+// 			borderColor: '#F3F4F6',
+// 			labelColor: '#6B7280',
+// 			opacityFrom: 0.45,
+// 			opacityTo: 0,
+// 		};
+// 	}
 
-	return {
-		chart: {
-			height: 420,
-			type: 'area',
-			fontFamily: 'Inter, sans-serif',
-			foreColor: mainChartColors.labelColor,
-			toolbar: {
-				show: false,
-			},
-		},
-		fill: {
-			type: 'gradient',
-			gradient: {
-				enabled: true,
-				opacityFrom: mainChartColors.opacityFrom,
-				opacityTo: mainChartColors.opacityTo,
-			},
-		},
-		dataLabels: {
-			enabled: false,
-		},
-		tooltip: {
-			style: {
-				fontSize: '14px',
-				fontFamily: 'Inter, sans-serif',
-			},
-		},
-		grid: {
-			show: true,
-			borderColor: mainChartColors.borderColor,
-			strokeDashArray: 1,
-			padding: {
-				left: 35,
-				bottom: 15,
-			},
-		},
-		series: chartData,
-		markers: {
-			size: 5,
-			strokeColors: '#ffffff',
-			hover: {
-				size: undefined,
-				sizeOffset: 3,
-			},
-		},
-		xaxis: {
-			categories: xAxisDates,
-			labels: {
-				style: {
-					colors: [mainChartColors.labelColor],
-					fontSize: '14px',
-					fontWeight: 500,
-				},
-			},
-			axisBorder: {
-				color: mainChartColors.borderColor,
-			},
-			axisTicks: {
-				color: mainChartColors.borderColor,
-			},
-			crosshairs: {
-				show: true,
-				position: 'back',
-				stroke: {
-					color: mainChartColors.borderColor,
-					width: 1,
-					dashArray: 10,
-				},
-			},
-		},
-		yaxis: {
-			labels: {
-				style: {
-					colors: [mainChartColors.labelColor],
-					fontSize: '14px',
-					fontWeight: 500,
-				},
-				formatter(value: any) {
-					return `${value}`;
-				},
-			},
-		},
-		legend: {
-			fontSize: '14px',
-			fontWeight: 500,
-			fontFamily: 'Inter, sans-serif',
-			labels: {
-				colors: [mainChartColors.labelColor],
-			},
-			itemMargin: {
-				horizontal: 10,
-			},
-		},
-		responsive: [
-			{
-				breakpoint: 1024,
-				options: {
-					xaxis: {
-						labels: {
-							show: false,
-						},
-					},
-				},
-			},
-		],
-	};
-};
+// 	return {
+// 		chart: {
+// 			height: 420,
+// 			type: 'area',
+// 			fontFamily: 'Inter, sans-serif',
+// 			foreColor: mainChartColors.labelColor,
+// 			toolbar: {
+// 				show: false,
+// 			},
+// 		},
+// 		fill: {
+// 			type: 'gradient',
+// 			gradient: {
+// 				enabled: true,
+// 				opacityFrom: mainChartColors.opacityFrom,
+// 				opacityTo: mainChartColors.opacityTo,
+// 			},
+// 		},
+// 		dataLabels: {
+// 			enabled: false,
+// 		},
+// 		tooltip: {
+// 			style: {
+// 				fontSize: '14px',
+// 				fontFamily: 'Inter, sans-serif',
+// 			},
+// 		},
+// 		grid: {
+// 			show: true,
+// 			borderColor: mainChartColors.borderColor,
+// 			strokeDashArray: 1,
+// 			padding: {
+// 				left: 35,
+// 				bottom: 15,
+// 			},
+// 		},
+// 		series: chartData,
+// 		markers: {
+// 			size: 5,
+// 			strokeColors: '#ffffff',
+// 			hover: {
+// 				size: undefined,
+// 				sizeOffset: 3,
+// 			},
+// 		},
+// 		xaxis: {
+// 			categories: xAxisDates,
+// 			labels: {
+// 				style: {
+// 					colors: [mainChartColors.labelColor],
+// 					fontSize: '14px',
+// 					fontWeight: 500,
+// 				},
+// 			},
+// 			axisBorder: {
+// 				color: mainChartColors.borderColor,
+// 			},
+// 			axisTicks: {
+// 				color: mainChartColors.borderColor,
+// 			},
+// 			crosshairs: {
+// 				show: true,
+// 				position: 'back',
+// 				stroke: {
+// 					color: mainChartColors.borderColor,
+// 					width: 1,
+// 					dashArray: 10,
+// 				},
+// 			},
+// 		},
+// 		yaxis: {
+// 			labels: {
+// 				style: {
+// 					colors: [mainChartColors.labelColor],
+// 					fontSize: '14px',
+// 					fontWeight: 500,
+// 				},
+// 				formatter(value: any) {
+// 					return `${value}`;
+// 				},
+// 			},
+// 		},
+// 		legend: {
+// 			fontSize: '14px',
+// 			fontWeight: 500,
+// 			fontFamily: 'Inter, sans-serif',
+// 			labels: {
+// 				colors: [mainChartColors.labelColor],
+// 			},
+// 			itemMargin: {
+// 				horizontal: 10,
+// 			},
+// 		},
+// 		responsive: [
+// 			{
+// 				breakpoint: 1024,
+// 				options: {
+// 					xaxis: {
+// 						labels: {
+// 							show: false,
+// 						},
+// 					},
+// 				},
+// 			},
+// 		],
+// 	};
+// };
 
 if (document.getElementById('main-chart')) {
-	const chart = new ApexCharts(
-		document.getElementById('main-chart'),
-		getMainChartOptions(),
-	);
-	chart.render();
+	// const chart = new ApexCharts(
+	// 	document.getElementById('main-chart'),
+	// 	getMainChartOptions(),
+	// );
+	// chart.render();
 
-	// init again when toggling dark mode
-	document.addEventListener('dark-mode', () => {
-		chart.updateOptions(getMainChartOptions());
-	});
+	// // init again when toggling dark mode
+	// document.addEventListener('dark-mode', () => {
+	// 	chart.updateOptions(getMainChartOptions());
+	// });
 }
 function formatTime(timestamp: string) {
 	let options = {
@@ -279,323 +279,203 @@ function formatTime(timestamp: string) {
 	return time.toLocaleString('en-US', options);
 }
 if (document.getElementById('channel-tabs1')) {
-	// update channelList
+	// Track current page and limit
+	let currentPage = 1;
+	const limit = 100;
+	let loading = false;
 
-	// add options for each channel
-	let select = document.getElementById('channel-tabs1') as HTMLSelectElement;
+	// Add options for each channel
+	const select = document.getElementById('channel-tabs1') as HTMLSelectElement;
+	const channelList = document.getElementById('visits-list');
+	const visitsContainer = document.getElementById('visits'); // container with scroll
+	const loadingSpinner = document.createElement('div');
+	loadingSpinner.className = 'loading-spinner';
+	loadingSpinner.innerHTML = 'Loading another 100 visits...';
+	channelList?.appendChild(loadingSpinner);
+
 	channels.forEach((channel) => {
-		let option = document.createElement('option');
+		const option = document.createElement('option');
 		option.value = channel;
 		option.text = channel;
 		select.appendChild(option);
 	});
-	const response = await fetch(
-		`https://api.brideauinvesting.com/api/visitsByChannel?channel=bbb&page=1&limit=300`,
-	);
-	// Adjust the date range
-	const data = await response.json();
-	let channelList = document.getElementById('visits-list');
 
-	// data format:
-	/**
-	 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
-	 */
-	// Add the data to the list
-	data.forEach((visit: any) => {
-		let li = document.createElement('li');
-		li.classList.add('py-1', 'sm:py-1');
+	async function fetchVisits(channel: string, page: number) {
+		const response = await fetch(
+			`https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}&limit=${limit}&page=${page}`
+		);
+		return await response.json();
+	}
 
-		// Create the inner HTML dynamically with user info and formatted timestamp
-		li.innerHTML = `
-<button class="toggle-about-btn">
-		  <div class="flex items-center justify-between cursor-pointer hover:bg-blue-200">
-			<div class="flex items-center min-w-0">
-			  <div class="ml-3 flex">
-				<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
-				  ${visit.name} <!-- Replace with actual username -->
-				</p>
-				<div class="flex items-center justify-end flex-1 text-sm ${
-					visit.online ? 'text-green-500' : 'text-red-500'
-				} ">
-				  
-				  <span>${formatTime(visit.timestamp)}</span>
-				  <span class="mx-1">|</span>
-				  <span>${visit.online ? 'Online' : 'Offline'}</span>
-				</div>
-			  </div>
-			</div>
+	async function loadVisits(channel: string, page: number) {
+		loading = true;
+		const data = await fetchVisits(channel, page);
 
-		  </div>
-		  </button>
-		`;
-		li.querySelector('.toggle-about-btn')?.addEventListener(
-			'click',
-			function () {
+		// Append the data to the list
+		data.forEach((visit: any) => {
+			const li = document.createElement('li');
+			li.classList.add('py-1', 'sm:py-1');
+
+			li.innerHTML = `
+				<button class="toggle-about-btn">
+					<div class="flex items-center justify-between cursor-pointer hover:bg-blue-200">
+						<div class="flex items-center min-w-0">
+							<div class="ml-3 flex">
+								<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
+									${visit.name}
+								</p>
+								<div class="flex items-center justify-end flex-1 text-sm ${
+									visit.online ? 'text-green-500' : 'text-red-500'
+								}">
+									<span>${formatTime(visit.timestamp)}</span>
+									<span class="mx-1">|</span>
+									<span>${visit.online ? 'Online' : 'Offline'}</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</button>
+			`;
+
+			li.querySelector('.toggle-about-btn')?.addEventListener('click', function () {
 				const aboutDiv = document.getElementById('about-tab');
-				// click on tab
-				if (aboutDiv) {
-					aboutDiv.click();
-				}
-				// get name from li -> p with id name
+				if (aboutDiv) aboutDiv.click();
+
 				const name = li.querySelector('#name')?.textContent;
-				// remove whitespace and @ symbol
-				const nameWithoutWhitespace = name
-					?.replace(/\s/g, '')
-					.replace('@', '') as string;
-				//insert name into userInput
-				const userInput = document.getElementById(
-					'user-input',
-				) as HTMLInputElement;
+				const nameWithoutWhitespace = name?.replace(/\s/g, '').replace('@', '') as string;
+				const userInput = document.getElementById('user-input') as HTMLInputElement;
 				if (userInput) {
 					userInput.value = nameWithoutWhitespace;
-					// send Enter event
-					userInput.dispatchEvent(
-						new KeyboardEvent('keydown', { key: 'Enter' }),
-					);
+					userInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 				}
-			},
-		);
-		channelList?.appendChild(li);
-	});
-	// conosle log when a channel is selected
-	select.addEventListener('change', async (event) => {
-		let channel = (event.target as HTMLSelectElement).value;
+			});
 
-		// remove all LI items in id channel-list
-		let channelList = document.getElementById('visits-list');
-		while (channelList?.firstChild) {
-			channelList.removeChild(channelList.firstChild);
-		}
-
-		const response = await fetch(
-			`https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}`,
-		);
-		// Adjust the date range
-		let data = await response.json();
-		// jsut get top 500
-		data = data.slice(0, 500);
-		// data format:
-		/**
-		 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
-		 */
-		// Add the data to the list
-		data.forEach((visit: any) => {
-			let li = document.createElement('li');
-			li.classList.add('py-1', 'sm:py-2');
-
-			// Create the inner HTML dynamically with user info and formatted timestamp
-			li.innerHTML = `
-			<button class="toggle-about-btn">
-					  <div class="flex items-center justify-between cursor-pointer hover:bg-blue-200">
-						<div class="flex items-center min-w-0">
-						  <div class="ml-3 flex">
-							<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
-							  ${visit.name} <!-- Replace with actual username -->
-							</p>
-							<div class="flex items-center justify-end flex-1 text-sm ${
-								visit.online ? 'text-green-500' : 'text-red-500'
-							} ">
-							  
-							  <span>${formatTime(visit.timestamp)}</span>
-							  <span class="mx-1">|</span>
-							  <span>${visit.online ? 'Online' : 'Offline'}</span>
-							</div>
-						  </div>
-						</div>
-			
-					  </div>
-					  </button>
-					`;
-			li.querySelector('.toggle-about-btn')?.addEventListener(
-				'click',
-				function () {
-					const aboutDiv = document.getElementById('about-tab');
-					// click on tab
-					if (aboutDiv) {
-						aboutDiv.click();
-					}
-					// get name from li -> p with id name
-					const name = li.querySelector('#name')?.textContent;
-					// remove whitespace and @ symbol
-					const nameWithoutWhitespace = name
-						?.replace(/\s/g, '')
-						.replace('@', '') as string;
-					//insert name into userInput
-					const userInput = document.getElementById(
-						'user-input',
-					) as HTMLInputElement;
-					if (userInput) {
-						userInput.value = nameWithoutWhitespace;
-						// send Enter event
-						userInput.dispatchEvent(
-							new KeyboardEvent('keydown', { key: 'Enter' }),
-						);
-					}
-				},
-			);
-
-			channelList?.appendChild(li);
+			channelList?.insertBefore(li, loadingSpinner);
 		});
+
+		loading = false;
+	}
+
+	// Initial load
+	let selectedChannel = 'bbb';
+	await loadVisits(selectedChannel, currentPage);
+
+	// Listen for scroll event to load more data when near the bottom
+	visitsContainer?.addEventListener('scroll', async () => {
+		if (
+			visitsContainer.scrollTop + visitsContainer.clientHeight >= visitsContainer.scrollHeight - 100 &&
+			!loading
+		) {
+			currentPage++;
+			await loadVisits(selectedChannel, currentPage);
+		}
+	});
+
+	// Reload data when a new channel is selected
+	select.addEventListener('change', async (event) => {
+		selectedChannel = (event.target as HTMLSelectElement).value;
+		channelList!.innerHTML = '';
+		channelList?.appendChild(loadingSpinner);
+
+		// Reset pagination and load new data
+		currentPage = 1;
+		await loadVisits(selectedChannel, currentPage);
 	});
 }
+
+
 if (document.getElementById('channel-tabs2')) {
-	// add options for each channel
-	let select = document.getElementById('channel-tabs2') as HTMLSelectElement;
+	// Add options for each channel
+	const select = document.getElementById('channel-tabs2') as HTMLSelectElement;
+	const channelList = document.getElementById('channel-list');
+	const faqContainer = document.getElementById('faq'); // container with scroll
+
 	channels.forEach((channel) => {
-		let option = document.createElement('option');
+		const option = document.createElement('option');
 		option.value = channel;
 		option.text = channel;
 		select.appendChild(option);
 	});
-	const response = await fetch(
-		`https://api.brideauinvesting.com/api/usersByChannel?channel=bbb`,
-	);
-	// Adjust the date range
-	const data = await response.json();
-	let channelList = document.getElementById('channel-list');
 
-	// data format:
-	/**
-	 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
-	 */
-	// Add the data to the list
-	data.forEach((visit: any) => {
-		let li = document.createElement('li');
-		li.classList.add('py-1', 'sm:py-1');
+	// Fetch data function
+	async function fetchVisits(channel: string) {
+		const response = await fetch(`https://api.brideauinvesting.com/api/usersByChannel?channel=${channel}`);
+		const data = await response.json();
+		return data.slice(0, 500); // Limit to top 500
+	}
 
-		// Create the inner HTML dynamically with user info and formatted timestamp
-		li.innerHTML = `
-<button class="toggle-about-btn">
-		  <div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
-			<div class="flex items-center min-w-0">
-			  <div class="ml-3 flex">
-				<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
-				  ${visit.name} <!-- Replace with actual username -->
-				</p>
-				<div class="flex items-center justify-end flex-1 text-sm ${
-					visit.online ? 'text-green-500' : 'text-red-500'
-				} ">
-				  
-				  <span>${formatTime(visit.last_visit)}</span>
-				  <span class="mx-1">|</span>
-				  <span>${visit.online ? 'Online' : 'Offline'}</span>
-				</div>
-			  </div>
-			</div>
+	// Load visits into the list
+	async function loadVisits(channel: string) {
+		const data = await fetchVisits(channel);
 
-		  </div>
-		  </button>
-		`;
-		li.querySelector('.toggle-about-btn')?.addEventListener(
-			'click',
-			function () {
-				const aboutDiv = document.getElementById('about-tab');
-				// click on tab
-				if (aboutDiv) {
-					aboutDiv.click();
-				}
-				// get name from li -> p with id name
-				const name = li.querySelector('#name')?.textContent;
-				// remove whitespace and @ symbol
-				const nameWithoutWhitespace = name
-					?.replace(/\s/g, '')
-					.replace('@', '') as string;
-				//insert name into userInput
-				const userInput = document.getElementById(
-					'user-input',
-				) as HTMLInputElement;
-				if (userInput) {
-					userInput.value = nameWithoutWhitespace;
-					// send Enter event
-					userInput.dispatchEvent(
-						new KeyboardEvent('keydown', { key: 'Enter' }),
-					);
-				}
-			},
-		);
-		channelList?.appendChild(li);
-	});
-	// conosle log when a channel is selected
-	select.addEventListener('change', async (event) => {
-		let channel = (event.target as HTMLSelectElement).value;
-
-		// remove all LI items in id channel-list
-		let channelList = document.getElementById('channel-list');
-		while (channelList?.firstChild) {
-			channelList.removeChild(channelList.firstChild);
-		}
-
-		const response = await fetch(
-			`https://api.brideauinvesting.com/api/usersByChannel?channel=${channel}`,
-		);
-		// Adjust the date range
-		let data = await response.json();
-		// jsut get top 500
-		data = data.slice(0, 500);
-		// data format:
-		/**
-		 *name: "@contrarian", online: 1,timestamp: "2024-09-30T18:03:33.841Z"
-		 */
 		// Add the data to the list
 		data.forEach((visit: any) => {
-			let li = document.createElement('li');
+			const li = document.createElement('li');
 			li.classList.add('py-1', 'sm:py-2');
 
-			// Create the inner HTML dynamically with user info and formatted timestamp
 			li.innerHTML = `
-			<button class="toggle-about-btn">
-					  <div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
+				<button class="toggle-about-btn">
+					<div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
 						<div class="flex items-center min-w-0">
-						  <div class="ml-3 flex">
-							<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
-							  ${visit.name} <!-- Replace with actual username -->
-							</p>
-							<div class="flex items-center justify-end flex-1 text-sm ${
-								visit.online ? 'text-green-500' : 'text-red-500'
-							} ">
-							  
-							  <span>${formatTime(visit.last_visit)}</span>
-							  <span class="mx-1">|</span>
-							  <span>${visit.online ? 'Online' : 'Offline'}</span>
+							<div class="ml-3 flex">
+								<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
+									${visit.name}
+								</p>
+								<div class="flex items-center justify-end flex-1 text-sm ${
+									visit.online ? 'text-green-500' : 'text-red-500'
+								}">
+									<span>${formatTime(visit.last_visit)}</span>
+									<span class="mx-1">|</span>
+									<span>${visit.online ? 'Online' : 'Offline'}</span>
+								</div>
 							</div>
-						  </div>
 						</div>
-			
-					  </div>
-					  </button>
-					`;
-			li.querySelector('.toggle-about-btn')?.addEventListener(
-				'click',
-				function () {
-					const aboutDiv = document.getElementById('about-tab');
-					// click on tab
-					if (aboutDiv) {
-						aboutDiv.click();
-					}
-					// get name from li -> p with id name
-					const name = li.querySelector('#name')?.textContent;
-					// remove whitespace and @ symbol
-					const nameWithoutWhitespace = name
-						?.replace(/\s/g, '')
-						.replace('@', '') as string;
-					//insert name into userInput
-					const userInput = document.getElementById(
-						'user-input',
-					) as HTMLInputElement;
-					if (userInput) {
-						userInput.value = nameWithoutWhitespace;
-						// send Enter event
-						userInput.dispatchEvent(
-							new KeyboardEvent('keydown', { key: 'Enter' }),
-						);
-					}
-				},
-			);
+					</div>
+				</button>
+			`;
+
+			li.querySelector('.toggle-about-btn')?.addEventListener('click', () => {
+				const aboutDiv = document.getElementById('about-tab');
+				if (aboutDiv) aboutDiv.click();
+
+				const name = li.querySelector('#name')?.textContent;
+				const nameWithoutWhitespace = name?.replace(/\s/g, '').replace('@', '') as string;
+				const userInput = document.getElementById('user-input') as HTMLInputElement;
+				if (userInput) {
+					userInput.value = nameWithoutWhitespace;
+					userInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+				}
+			});
 
 			channelList?.appendChild(li);
 		});
+	}
+
+	// Initial load for the default channel
+	let selectedChannel = 'bbb';
+	await loadVisits(selectedChannel);
+
+	// Reload data when a new channel is selected
+	select.addEventListener('change', async (event) => {
+		selectedChannel = (event.target as HTMLSelectElement).value;
+		channelList!.innerHTML = ''; // Clear previous list
+		await loadVisits(selectedChannel);
+	});
+
+	// Infinite scroll loading
+	let loading = false;
+	faqContainer?.addEventListener('scroll', async () => {
+		if (
+			faqContainer.scrollTop + faqContainer.clientHeight >= faqContainer.scrollHeight - 100 &&
+			!loading
+		) {
+			loading = true;
+			await loadVisits(selectedChannel);
+			loading = false;
+		}
 	});
 }
+
 if (document.getElementById('user-input')) {
 	let userInput = document.getElementById('user-input') as HTMLInputElement;
 	let userList = document.getElementById('user-list');
@@ -662,15 +542,15 @@ if (document.getElementById('user-input')) {
 	});
 }
 // every 30sec trigger a change event on id channel-visits
-setInterval(() => {
-	let channelVisits = document.getElementById('channel-tabs');
-	channelVisits?.dispatchEvent(new Event('change'));
+// setInterval(() => {
+// 	let channelVisits = document.getElementById('channel-tabs');
+// 	channelVisits?.dispatchEvent(new Event('change'));
 
-	let userVisits = document.getElementById('user-input');
-	// create a enter key event
-	let enterKey = new KeyboardEvent('keydown', { key: 'Enter' });
-	userVisits?.dispatchEvent(enterKey);
-}, 30000);
+// 	let userVisits = document.getElementById('user-input');
+// 	// create a enter key event
+// 	let enterKey = new KeyboardEvent('keydown', { key: 'Enter' });
+// 	userVisits?.dispatchEvent(enterKey);
+// }, 30000);
 if (document.getElementById('new-products-chart')) {
 	const options = {
 		colors: ['#1A56DB', '#FDBA8C'],

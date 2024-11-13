@@ -418,33 +418,42 @@ const server = Bun.serve({
     }
     if (url.pathname === "/api/usersByChannel") {
       const channel = url.searchParams.get("channel");
-
+      const page = parseInt(url.searchParams.get("page") || "1");
+      const limit = parseInt(url.searchParams.get("limit") || "100");
+    
       if (!channel) {
         return new Response("Missing parameters", { status: 400 });
       }
-
+    
+      // Calculate offset based on the page and limit
+      const offset = (page - 1) * limit;
+    
+      // Get paginated users with last visit information
       const query = `
-      SELECT u.*, v.last_visit
-      FROM users u
-      JOIN (
-        SELECT user_id, MAX(timestamp) AS last_visit
-        FROM visits
-        WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
-        GROUP BY user_id
-      ) v ON u.id = v.user_id
-       ORDER BY last_visit DESC;
-    `;
-
-      return new Response(JSON.stringify(db.query(query).all(channel)), {
+        SELECT u.*, v.last_visit
+        FROM users u
+        JOIN (
+          SELECT user_id, MAX(timestamp) AS last_visit
+          FROM visits
+          WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
+          GROUP BY user_id
+        ) v ON u.id = v.user_id
+        ORDER BY v.last_visit DESC
+        LIMIT ? OFFSET ?;
+      `;
+    
+      const results = db.query(query).all(channel, limit, offset);
+    
+      return new Response(JSON.stringify(results), {
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // Allow all origins
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
-          "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
         },
       });
     }
-
+    
     if (url.pathname === "/api/visitsByUser") {
       const user = url.searchParams.get("user");
 
@@ -494,6 +503,7 @@ const server = Bun.serve({
     
       const results = db.query(query).all(channel, limit, offset);
     
+      console.log('Got Results', results.length);
       return new Response(JSON.stringify(results), {
         headers: {
           "Content-Type": "application/json",
@@ -659,6 +669,6 @@ setInterval(async () => {
   channels.forEach(async (channel) => await fetchAndLogUsers(channel));
   updateOnlineStatus(activeUserIds);
   activeUserIds = [];
-}, 10000);
+}, 20000);
 
 console.log(`Listening on http://localhost:3008 ...`);
