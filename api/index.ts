@@ -472,29 +472,38 @@ const server = Bun.serve({
     // create an API that returns all the visits from a channel, with Username and if their online or not.
     if (url.pathname === "/api/visitsByChannel") {
       const channel = url.searchParams.get("channel");
-
+      const page = parseInt(url.searchParams.get("page") || "1");
+      const limit = parseInt(url.searchParams.get("limit") || "100");
+    
       if (!channel) {
         return new Response("Missing parameters", { status: 400 });
       }
-
-      // get all visits, and also the username and if they're online
+    
+      // Calculate offset based on the page and limit
+      const offset = (page - 1) * limit;
+    
+      // Get paginated visits, including username and online status
       const query = `
         SELECT v.*, u.name, u.online
         FROM visits v
         JOIN users u ON v.user_id = u.id
         WHERE v.channel_id = (SELECT id FROM channels WHERE name = ?)
-        ORDER BY v.timestamp DESC;
+        ORDER BY v.timestamp DESC
+        LIMIT ? OFFSET ?;
       `;
-
-      return new Response(JSON.stringify(db.query(query).all(channel)), {
+    
+      const results = db.query(query).all(channel, limit, offset);
+    
+      return new Response(JSON.stringify(results), {
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // Allow all origins
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
-          "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
         },
       });
     }
+    
 
     if (url.pathname === "/api/addChannels") {
       if (req.method === "OPTIONS") {
@@ -650,6 +659,6 @@ setInterval(async () => {
   channels.forEach(async (channel) => await fetchAndLogUsers(channel));
   updateOnlineStatus(activeUserIds);
   activeUserIds = [];
-}, 20000);
+}, 10000);
 
 console.log(`Listening on http://localhost:3008 ...`);

@@ -290,7 +290,7 @@ if (document.getElementById('channel-tabs1')) {
 		select.appendChild(option);
 	});
 	const response = await fetch(
-		`https://api.brideauinvesting.com/api/visitsByChannel?channel=bbb`,
+		`https://api.brideauinvesting.com/api/visitsByChannel?channel=bbb&page=1&limit=300`,
 	);
 	// Adjust the date range
 	const data = await response.json();
