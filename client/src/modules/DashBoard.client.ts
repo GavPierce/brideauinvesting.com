@@ -5,6 +5,9 @@ import ApexCharts from 'apexcharts';
 let responseData = await fetch('https://api.brideauinvesting.com/api/getChannels');
 let channelObject = await responseData.json() as {channels: string[]};
 let channels = channelObject.channels as string[];
+
+// sort channels alphabetically
+channels.sort();
 console.log(channels)
 
 const getColorForChannel = (channel: string) => {
