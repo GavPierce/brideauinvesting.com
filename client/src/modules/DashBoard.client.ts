@@ -5,6 +5,8 @@ import ApexCharts from 'apexcharts';
 let responseData = await fetch('https://api.brideauinvesting.com/api/getChannels');
 let channelObject = await responseData.json() as {channels: string[]};
 let channels = channelObject.channels as string[];
+// sort channels alphabetically
+channels.sort();
 console.log(channels)
 
 const getColorForChannel = (channel: string) => {
@@ -279,15 +281,15 @@ function formatTime(timestamp: string) {
 	return time.toLocaleString('en-US', options);
 }
 if (document.getElementById('channel-tabs1')) {
-	// Track current page and limit
+	// Track current page, limit, loading state, and latest visit timestamp
 	let currentPage = 1;
 	const limit = 100;
 	let loading = false;
+	let latestVisitTimestamp = 0;
 
-	// Add options for each channel
 	const select = document.getElementById('channel-tabs1') as HTMLSelectElement;
 	const channelList = document.getElementById('visits-list');
-	const visitsContainer = document.getElementById('visits'); // container with scroll
+	const visitsContainer = document.getElementById('visits');
 	const loadingSpinner = document.createElement('div');
 	loadingSpinner.className = 'loading-spinner';
 	loadingSpinner.innerHTML = 'Loading another 100 visits...';
@@ -300,18 +302,23 @@ if (document.getElementById('channel-tabs1')) {
 		select.appendChild(option);
 	});
 
-	async function fetchVisits(channel: string, page: number) {
-		const response = await fetch(
-			`https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}&limit=${limit}&page=${page}`
-		);
+	async function fetchVisits(channel: string, page: number, sinceTimestamp = 0) {
+		const url = `https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}&limit=${limit}&page=${page}` +
+			(sinceTimestamp ? `&since=${sinceTimestamp}` : '');
+		const response = await fetch(url);
 		return await response.json();
 	}
 
-	async function loadVisits(channel: string, page: number) {
+	async function loadVisits(channel: string, page: number, prependNew = false) {
 		loading = true;
-		const data = await fetchVisits(channel, page);
+		const data = await fetchVisits(channel, page, prependNew ? latestVisitTimestamp : 0);
 
-		// Append the data to the list
+		// Update the latest timestamp with the most recent visit's timestamp
+		if (data.length > 0 && prependNew) {
+			latestVisitTimestamp = data[0].timestamp;
+		}
+
+		// Append new visits at the top if prependNew is true, otherwise load at the bottom
 		data.forEach((visit: any) => {
 			const li = document.createElement('li');
 			li.classList.add('py-1', 'sm:py-1');
@@ -350,7 +357,11 @@ if (document.getElementById('channel-tabs1')) {
 				}
 			});
 
-			channelList?.insertBefore(li, loadingSpinner);
+			if (prependNew) {
+				channelList?.insertBefore(li, channelList.firstChild);
+			} else {
+				channelList?.insertBefore(li, loadingSpinner);
+			}
 		});
 
 		loading = false;
@@ -374,21 +385,32 @@ if (document.getElementById('channel-tabs1')) {
 	// Reload data when a new channel is selected
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
+		currentPage = 1;
+		latestVisitTimestamp = 0;
 		channelList!.innerHTML = '';
 		channelList?.appendChild(loadingSpinner);
-
-		// Reset pagination and load new data
-		currentPage = 1;
 		await loadVisits(selectedChannel, currentPage);
 	});
+
+	// Update the visits list every 30 seconds with new visits at the top
+	setInterval(async () => {
+		await loadVisits(selectedChannel, 1, true);
+	}, 30000); // 30 seconds in milliseconds
 }
-
-
 if (document.getElementById('channel-tabs2')) {
-	// Add options for each channel
+	// Track current page, limit, loading state, and latest visit timestamp
+	let currentPage = 1;
+	const limit = 100;
+	let loading = false;
+	let latestVisitTimestamp = 0;
+
 	const select = document.getElementById('channel-tabs2') as HTMLSelectElement;
 	const channelList = document.getElementById('channel-list');
-	const faqContainer = document.getElementById('faq'); // container with scroll
+	const visitsContainer = document.getElementById('faq');
+	const loadingSpinner = document.createElement('div');
+	loadingSpinner.className = 'loading-spinner';
+	loadingSpinner.innerHTML = 'Loading another 100 visits...';
+	channelList?.appendChild(loadingSpinner);
 
 	channels.forEach((channel) => {
 		const option = document.createElement('option');
@@ -397,25 +419,30 @@ if (document.getElementById('channel-tabs2')) {
 		select.appendChild(option);
 	});
 
-	// Fetch data function
-	async function fetchVisits(channel: string) {
-		const response = await fetch(`https://api.brideauinvesting.com/api/usersByChannel?channel=${channel}`);
-		const data = await response.json();
-		return data.slice(0, 500); // Limit to top 500
+	async function fetchVisits(channel: string, page: number, sinceTimestamp = 0) {
+		const url = `https://api.brideauinvesting.com/api/usersByChannel?channel=${channel}&limit=${limit}&page=${page}` +
+			(sinceTimestamp ? `&since=${sinceTimestamp}` : '');
+		const response = await fetch(url);
+		return await response.json();
 	}
 
-	// Load visits into the list
-	async function loadVisits(channel: string) {
-		const data = await fetchVisits(channel);
+	async function loadVisits(channel: string, page: number, prependNew = false) {
+		loading = true;
+		const data = await fetchVisits(channel, page, prependNew ? latestVisitTimestamp : 0);
 
-		// Add the data to the list
+		// Update the latest timestamp with the most recent visit's timestamp
+		if (data.length > 0 && prependNew) {
+			latestVisitTimestamp = data[0].timestamp;
+		}
+
+		// Append new visits at the top if prependNew is true, otherwise load at the bottom
 		data.forEach((visit: any) => {
 			const li = document.createElement('li');
-			li.classList.add('py-1', 'sm:py-2');
+			li.classList.add('py-1', 'sm:py-1');
 
 			li.innerHTML = `
 				<button class="toggle-about-btn">
-					<div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
+					<div class="flex items-center justify-between cursor-pointer hover:bg-blue-200">
 						<div class="flex items-center min-w-0">
 							<div class="ml-3 flex">
 								<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
@@ -424,7 +451,7 @@ if (document.getElementById('channel-tabs2')) {
 								<div class="flex items-center justify-end flex-1 text-sm ${
 									visit.online ? 'text-green-500' : 'text-red-500'
 								}">
-									<span>${formatTime(visit.last_visit)}</span>
+									<span>${formatTime(visit.timestamp)}</span>
 									<span class="mx-1">|</span>
 									<span>${visit.online ? 'Online' : 'Offline'}</span>
 								</div>
@@ -434,7 +461,7 @@ if (document.getElementById('channel-tabs2')) {
 				</button>
 			`;
 
-			li.querySelector('.toggle-about-btn')?.addEventListener('click', () => {
+			li.querySelector('.toggle-about-btn')?.addEventListener('click', function () {
 				const aboutDiv = document.getElementById('about-tab');
 				if (aboutDiv) aboutDiv.click();
 
@@ -447,8 +474,117 @@ if (document.getElementById('channel-tabs2')) {
 				}
 			});
 
-			channelList?.appendChild(li);
+			if (prependNew) {
+				channelList?.insertBefore(li, channelList.firstChild);
+			} else {
+				channelList?.insertBefore(li, loadingSpinner);
+			}
 		});
+
+		loading = false;
+	}
+
+	// Initial load
+	let selectedChannel = 'bbb';
+	await loadVisits(selectedChannel, currentPage);
+
+	// Listen for scroll event to load more data when near the bottom
+	visitsContainer?.addEventListener('scroll', async () => {
+		if (
+			visitsContainer.scrollTop + visitsContainer.clientHeight >= visitsContainer.scrollHeight - 100 &&
+			!loading
+		) {
+			currentPage++;
+			await loadVisits(selectedChannel, currentPage);
+		}
+	});
+
+	// Reload data when a new channel is selected
+	select.addEventListener('change', async (event) => {
+		selectedChannel = (event.target as HTMLSelectElement).value;
+		currentPage = 1;
+		latestVisitTimestamp = 0;
+		channelList!.innerHTML = '';
+		channelList?.appendChild(loadingSpinner);
+		await loadVisits(selectedChannel, currentPage);
+	});
+
+	// Update the visits list every 30 seconds with new visits at the top
+	setInterval(async () => {
+		await loadVisits(selectedChannel, 1, true);
+	}, 30000); // 30 seconds in milliseconds
+}
+
+
+if (document.getElementById('channel-tabs2')) {
+	const select = document.getElementById('channel-tabs2') as HTMLSelectElement;
+	const channelList = document.getElementById('channel-list');
+	const faqContainer = document.getElementById('faq');
+	let currentData: any[] = []; // Store current data to compare with new data
+
+	channels.forEach((channel) => {
+		const option = document.createElement('option');
+		option.value = channel;
+		option.text = channel;
+		select.appendChild(option);
+	});
+
+	async function fetchVisits(channel: string) {
+		const response = await fetch(`http://localhost:3008/api/usersByChannel?channel=${channel}`);
+		const data = await response.json();
+		return data.slice(0, 500); // Limit to top 500
+	}
+
+	async function loadVisits(channel: string) {
+		const data = await fetchVisits(channel);
+
+		// Only update if there's new data
+		if (JSON.stringify(data) !== JSON.stringify(currentData)) {
+			currentData = data; // Update current data
+
+			// Clear list and add new data
+			channelList!.innerHTML = '';
+			data.forEach((visit: any) => {
+				const li = document.createElement('li');
+				li.classList.add('py-1', 'sm:py-2');
+
+				li.innerHTML = `
+					<button class="toggle-about-btn">
+						<div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
+							<div class="flex items-center min-w-0">
+								<div class="ml-3 flex">
+									<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
+										${visit.name}
+									</p>
+									<div class="flex items-center justify-end flex-1 text-sm ${
+										visit.online ? 'text-green-500' : 'text-red-500'
+									}">
+										<span>${formatTime(visit.last_visit)}</span>
+										<span class="mx-1">|</span>
+										<span>${visit.online ? 'Online' : 'Offline'}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</button>
+				`;
+
+				li.querySelector('.toggle-about-btn')?.addEventListener('click', () => {
+					const aboutDiv = document.getElementById('about-tab');
+					if (aboutDiv) aboutDiv.click();
+
+					const name = li.querySelector('#name')?.textContent;
+					const nameWithoutWhitespace = name?.replace(/\s/g, '').replace('@', '') as string;
+					const userInput = document.getElementById('user-input') as HTMLInputElement;
+					if (userInput) {
+						userInput.value = nameWithoutWhitespace;
+						userInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+					}
+				});
+
+				channelList?.appendChild(li);
+			});
+		}
 	}
 
 	// Initial load for the default channel
@@ -458,7 +594,6 @@ if (document.getElementById('channel-tabs2')) {
 	// Reload data when a new channel is selected
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
-		channelList!.innerHTML = ''; // Clear previous list
 		await loadVisits(selectedChannel);
 	});
 
@@ -474,7 +609,13 @@ if (document.getElementById('channel-tabs2')) {
 			loading = false;
 		}
 	});
+
+	// Auto-refresh the list every 30 seconds
+	setInterval(async () => {
+		await loadVisits(selectedChannel);
+	}, 30000); // 30,000ms = 30 seconds
 }
+
 
 if (document.getElementById('user-input')) {
 	let userInput = document.getElementById('user-input') as HTMLInputElement;
