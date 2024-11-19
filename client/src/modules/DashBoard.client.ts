@@ -360,7 +360,7 @@ if (document.getElementById('channel-tabs1')) {
 	}
 
 	// Initial load
-	let selectedChannel = 'bbb';
+	let selectedChannel = channels[0] as string;
 	await loadVisits(selectedChannel, currentPage);
 
 	// Listen for scroll event to load more data when near the bottom
@@ -455,7 +455,7 @@ if (document.getElementById('channel-tabs2')) {
 	}
 
 	// Initial load for the default channel
-	let selectedChannel = 'bbb';
+	let selectedChannel = channels[0] as string;
 	await loadVisits(selectedChannel);
 
 	// Reload data when a new channel is selected
