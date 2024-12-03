@@ -153,7 +153,7 @@ let activeUserIds: number[] = [];
 
 async function fetchAndLogUsers(channelName: string) {
   const response = await fetch(
-    `https://ceo.ca/api/channels/online_users?channel=${channelName}`
+    `https://api.ceo.ca/api/channels/online_users?channel=${channelName}`
   );
 
   if (!response.ok) {
