@@ -14,21 +14,18 @@
 		totalWeeklyElement.innerHTML = totalWeekly;
 	}
 </script>
-<div class="px-4 pt-6">
-	<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-		<!-- Weekly Visits Metric Card -->
-		<div class="p-4 bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-xl shadow-sm dark:from-gray-800 dark:to-gray-800/80 dark:border-gray-700 md:col-span-1">
-			<div class="flex items-center justify-between">
-				<div>
-					<h3 class="text-sm font-medium text-blue-700 dark:text-blue-300">Visits This Week</h3>
-					<p class="mt-2 text-3xl font-extrabold text-blue-900 dark:text-white" id="totalWeekly">—</p>
-				</div>
-				<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">Live</span>
-			</div>
-		</div>
 
-		<!-- Tabs Widget -->
-		<div class="md:col-span-2 p-4 bg-white border border-gray-200 rounded-xl shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+<div class="px-4 pt-6">
+	<!-- Slim Weekly Visits Bar -->
+	<div class="mb-4 px-4 py-2 bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-lg shadow-sm dark:from-gray-800 dark:to-gray-800/80 dark:border-gray-700">
+		<div class="flex items-center justify-between">
+			<h3 class="text-xs font-medium text-blue-700 dark:text-blue-300">Visits This Week</h3>
+			<p class="text-xl font-extrabold text-blue-900 dark:text-white" id="totalWeekly">—</p>
+		</div>
+	</div>
+
+	<!-- Tabs Widget -->
+	<div class="p-4 bg-white border border-gray-200 rounded-xl shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
 			<ul
 				class="hidden text-sm font-medium text-center text-gray-600 divide-x divide-gray-200 rounded-lg sm:flex dark:divide-gray-600 dark:text-gray-300"
 				id="fullWidthTab"
