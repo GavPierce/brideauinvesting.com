@@ -324,6 +324,83 @@ const server = Bun.serve({
         },
       });
     }
+    if (url.pathname === "/api/visits/trendingChannel") {
+      // Determine the channel with the largest week-over-week delta, with pct change for context
+      const query = `
+        WITH this_week AS (
+          SELECT channel_id, COUNT(*) AS cnt
+          FROM visits
+          WHERE timestamp >= datetime('now', '-7 days')
+          GROUP BY channel_id
+        ), last_week AS (
+          SELECT channel_id, COUNT(*) AS cnt
+          FROM visits
+          WHERE timestamp >= datetime('now', '-14 days')
+            AND timestamp < datetime('now', '-7 days')
+          GROUP BY channel_id
+        )
+        SELECT 
+          c.name AS channel,
+          COALESCE(t.cnt, 0) AS current,
+          COALESCE(l.cnt, 0) AS previous,
+          (COALESCE(t.cnt, 0) - COALESCE(l.cnt, 0)) AS delta,
+          CASE 
+            WHEN COALESCE(l.cnt, 0) = 0 THEN NULL 
+            ELSE ROUND(((COALESCE(t.cnt, 0) - COALESCE(l.cnt, 0)) * 100.0) / COALESCE(l.cnt, 0), 2)
+          END AS pct_change
+        FROM channels c
+        LEFT JOIN this_week t ON c.id = t.channel_id
+        LEFT JOIN last_week l ON c.id = l.channel_id
+        ORDER BY delta DESC, pct_change DESC NULLS LAST
+        LIMIT 1;
+      `;
+
+      // SQLite in Bun may not support "NULLS LAST"; provide fallback if needed
+      let result: any;
+      try {
+        result = db.query(query).get();
+      } catch (e) {
+        const fallbackQuery = `
+          WITH this_week AS (
+            SELECT channel_id, COUNT(*) AS cnt
+            FROM visits
+            WHERE timestamp >= datetime('now', '-7 days')
+            GROUP BY channel_id
+          ), last_week AS (
+            SELECT channel_id, COUNT(*) AS cnt
+            FROM visits
+            WHERE timestamp >= datetime('now', '-14 days')
+              AND timestamp < datetime('now', '-7 days')
+            GROUP BY channel_id
+          )
+          SELECT 
+            c.name AS channel,
+            COALESCE(t.cnt, 0) AS current,
+            COALESCE(l.cnt, 0) AS previous,
+            (COALESCE(t.cnt, 0) - COALESCE(l.cnt, 0)) AS delta,
+            CASE 
+              WHEN COALESCE(l.cnt, 0) = 0 THEN NULL 
+              ELSE ROUND(((COALESCE(t.cnt, 0) - COALESCE(l.cnt, 0)) * 100.0) / COALESCE(l.cnt, 0), 2)
+            END AS pct_change,
+            (pct_change IS NULL) AS pct_is_null
+          FROM channels c
+          LEFT JOIN this_week t ON c.id = t.channel_id
+          LEFT JOIN last_week l ON c.id = l.channel_id
+          ORDER BY pct_is_null ASC, delta DESC
+          LIMIT 1;
+        `;
+        result = db.query(fallbackQuery).get();
+      }
+
+      return new Response(JSON.stringify(result ?? {}), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
     if (url.pathname === "/api/visits/hourly") {
       const channel = url.searchParams.get("channel");
       const lastHours = url.searchParams.get("lastHours");

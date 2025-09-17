@@ -13,14 +13,37 @@
 	if (totalWeeklyElement) {
 		totalWeeklyElement.innerHTML = totalWeekly;
 	}
+
+	// Fetch trending channel this week vs last week
+	let trendingText = '';
+	try {
+		const trendingResp = await fetch(`https://api.brideauinvesting.com/api/visits/trendingChannel`);
+		if (trendingResp.ok) {
+			const t = await trendingResp.json();
+			if (t && t.channel) {
+				const sign = t.delta >= 0 ? '+' : '';
+				const pct = t.pct_change != null ? `${sign}${t.pct_change}%` : 'n/a';
+				trendingText = `Trending Channel: ${t.channel.toUpperCase()} (${pct})`;
+			}
+		}
+	} catch (e) {
+		trendingText = '';
+	}
+	const trendingElement = document.getElementById('trending');
+	if (trendingElement) {
+		trendingElement.textContent = trendingText;
+	}
 </script>
 
 <div class="px-4 pt-2">
 	<!-- Slim Weekly Visits Bar -->
 	<div class="mb-3 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-md shadow-sm dark:from-gray-800 dark:to-gray-800/80 dark:border-gray-700">
-		<div class="flex items-baseline gap-2">
-			<h3 class="text-xs font-medium text-blue-700 dark:text-blue-300">Visits This Week</h3>
-			<p class="text-lg font-extrabold text-blue-900 dark:text-white" id="totalWeekly">—</p>
+		<div class="flex items-center justify-between">
+			<div class="flex items-baseline gap-2">
+				<h3 class="text-xs font-medium text-blue-700 dark:text-blue-300">Visits This Week</h3>
+				<p class="text-lg font-extrabold text-blue-900 dark:text-white" id="totalWeekly">—</p>
+			</div>
+			<p class="text-xs font-medium text-blue-800 dark:text-blue-200" id="trending"></p>
 		</div>
 	</div>
 
