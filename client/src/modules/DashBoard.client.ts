@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 
 import ApexCharts from 'apexcharts';
+import { animate, timeline } from 'motion';
 
 let responseData = await fetch('https://api.brideauinvesting.com/api/getChannels');
 let channelObject = await responseData.json() as {channels: string[]};
@@ -327,12 +328,9 @@ if (document.getElementById('channel-tabs1')) {
 
 	// Add options for each channel
 	const select = document.getElementById('channel-tabs1') as HTMLSelectElement;
-	const channelList = document.getElementById('visits-list');
-	const visitsContainer = document.getElementById('visits'); // container with scroll
-	const loadingSpinner = document.createElement('div');
-	loadingSpinner.className = 'loading-spinner';
-	loadingSpinner.innerHTML = 'Loading another 100 visits...';
-	channelList?.appendChild(loadingSpinner);
+    const channelList = document.getElementById('visits-list');
+    const visitsContainer = document.getElementById('visits'); // container with scroll
+    let skeletonBatch: HTMLElement[] = [];
 
 	channels.forEach((channel) => {
 		const option = document.createElement('option');
@@ -348,12 +346,37 @@ if (document.getElementById('channel-tabs1')) {
 		return await response.json();
 	}
 
-	async function loadVisits(channel: string, page: number) {
-		loading = true;
-		const data = await fetchVisits(channel, page);
+    function showSkeletons(listEl: HTMLElement, count: number) {
+        // Clear old skeletons
+        skeletonBatch.forEach((el) => el.remove());
+        skeletonBatch = [];
+        for (let i = 0; i < count; i++) {
+            const sk = document.createElement('li');
+            sk.className = 'py-2 sm:py-2';
+            sk.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+                </div>`;
+            listEl.appendChild(sk);
+            skeletonBatch.push(sk);
+            animate(sk, { opacity: [0.4, 1] }, { duration: 1, direction: 'alternate', repeat: Infinity });
+        }
+    }
 
-		// Append the data to the list
-		data.forEach((visit: any) => {
+    function clearSkeletons() {
+        skeletonBatch.forEach((el) => el.remove());
+        skeletonBatch = [];
+    }
+
+    async function loadVisits(channel: string, page: number) {
+        loading = true;
+        if (channelList) showSkeletons(channelList, 6);
+        const data = await fetchVisits(channel, page);
+        clearSkeletons();
+
+        // Append the data to the list
+        data.forEach((visit: any) => {
 			const li = document.createElement('li');
 			li.classList.add('py-1', 'sm:py-1');
 
@@ -403,7 +426,7 @@ if (document.getElementById('channel-tabs1')) {
 				await renderUserVisitsByQuery({ userId: Number(userIdAttr) });
 			});
 
-			channelList?.insertBefore(li, loadingSpinner);
+            channelList?.appendChild(li);
 		});
 
 		loading = false;
@@ -427,8 +450,7 @@ if (document.getElementById('channel-tabs1')) {
 	// Reload data when a new channel is selected
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
-		channelList!.innerHTML = '';
-		channelList?.appendChild(loadingSpinner);
+        channelList!.innerHTML = '';
 
 		// Reset pagination and load new data
 		currentPage = 1;
@@ -440,7 +462,7 @@ if (document.getElementById('channel-tabs1')) {
 if (document.getElementById('channel-tabs2')) {
 	// Add options for each channel
 	const select = document.getElementById('channel-tabs2') as HTMLSelectElement;
-	const channelList = document.getElementById('channel-list');
+    const channelList = document.getElementById('channel-list');
 	const faqContainer = document.getElementById('faq'); // container with scroll
 
 	channels.forEach((channel) => {
@@ -458,11 +480,13 @@ if (document.getElementById('channel-tabs2')) {
 	}
 
 	// Load visits into the list
-	async function loadVisits(channel: string) {
-		const data = await fetchVisits(channel);
+    async function loadVisits(channel: string) {
+        if (channelList) showSkeletons(channelList, 6);
+        const data = await fetchVisits(channel);
+        clearSkeletons();
 
-		// Add the data to the list
-		data.forEach((visit: any) => {
+        // Add the data to the list
+        data.forEach((visit: any) => {
 			const li = document.createElement('li');
 			li.classList.add('py-1', 'sm:py-2');
 
@@ -512,7 +536,7 @@ if (document.getElementById('channel-tabs2')) {
 				await renderUserVisitsByQuery({ public_id: publicId });
 			});
 
-			channelList?.appendChild(li);
+            channelList?.appendChild(li);
 		});
 	}
 
@@ -523,7 +547,7 @@ if (document.getElementById('channel-tabs2')) {
 	// Reload data when a new channel is selected
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
-		channelList!.innerHTML = ''; // Clear previous list
+        channelList!.innerHTML = ''; // Clear previous list
 		await loadVisits(selectedChannel);
 	});
 
@@ -543,14 +567,15 @@ if (document.getElementById('channel-tabs2')) {
 
 if (document.getElementById('user-input')) {
 	let userInput = document.getElementById('user-input') as HTMLInputElement;
-	let userList = document.getElementById('user-list');
+    let userList = document.getElementById('user-list');
 
 	userInput.addEventListener('keydown', async (event: any) => {
 		// if its enter
 		if (event.key === 'Enter') {
 			let user = (event.target as HTMLInputElement).value;
 			let userInfo = document.getElementById('user-info') as HTMLElement;
-			userInfo.innerHTML = `Loading...`;
+            userInfo.innerHTML = ``;
+            if (userList) showSkeletons(userList, 4);
 
 			// Check online status across all matching handles (names are not unique)
 			let userData = await fetch(
@@ -571,7 +596,8 @@ if (document.getElementById('user-input')) {
 				userInfo.classList.remove('text-green-500');
 			}
 
-			await renderUserVisitsByQuery({ name: user });
+            await renderUserVisitsByQuery({ name: user });
+            clearSkeletons();
 		}
 	});
 }

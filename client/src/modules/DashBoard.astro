@@ -15,12 +15,12 @@
 	}
 </script>
 
-<div class="px-4 pt-6">
+<div class="px-4 pt-2">
 	<!-- Slim Weekly Visits Bar -->
-	<div class="mb-4 px-4 py-2 bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-lg shadow-sm dark:from-gray-800 dark:to-gray-800/80 dark:border-gray-700">
-		<div class="flex items-center justify-between">
+	<div class="mb-3 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-md shadow-sm dark:from-gray-800 dark:to-gray-800/80 dark:border-gray-700">
+		<div class="flex items-baseline gap-2">
 			<h3 class="text-xs font-medium text-blue-700 dark:text-blue-300">Visits This Week</h3>
-			<p class="text-xl font-extrabold text-blue-900 dark:text-white" id="totalWeekly">—</p>
+			<p class="text-lg font-extrabold text-blue-900 dark:text-white" id="totalWeekly">—</p>
 		</div>
 	</div>
 
@@ -70,9 +70,7 @@
 						>
 						</select>
 					</div>
-					<ul role="list" id="visits-list" class="divide-y divide-gray-200 dark:divide-gray-700">
-						<li class="py-3 text-gray-400 text-sm" id="visits-loading">Loading another 100 visits…</li>
-					</ul>
+					<ul role="list" id="visits-list" class="divide-y divide-gray-200 dark:divide-gray-700"></ul>
 				</div>
 
 				<!-- Column: Channel Users -->
@@ -85,9 +83,7 @@
 						>
 						</select>
 					</div>
-					<ul role="list" id="channel-list" class="divide-y divide-gray-200 dark:divide-gray-700">
-						<li class="py-3 text-gray-400 text-sm" id="channel-loading">Loading users…</li>
-					</ul>
+					<ul role="list" id="channel-list" class="divide-y divide-gray-200 dark:divide-gray-700"></ul>
 				</div>
 
 				<!-- Column: User Visits Search -->
@@ -96,13 +92,12 @@
 						<span class="text-gray-500 dark:text-gray-300">@</span>
 						<input
 							id="user-input"
-							placeholder="Search handle (e.g. arioch)"
+							placeholder="Search handle"
 							class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 block w-2/3 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
 						/>
 					</div>
 					<div class="text-sm font-medium text-center" id="user-info"></div>
 					<ul role="list" id="user-list" class="divide-y divide-gray-200 dark:divide-gray-700">
-						<li class="py-3 text-gray-400 text-sm" id="user-loading" style="display:none;">Loading…</li>
 						<li class="py-3 text-gray-400 text-sm" id="user-empty" style="display:none;">No visits found for this user.</li>
 					</ul>
 				</div>
