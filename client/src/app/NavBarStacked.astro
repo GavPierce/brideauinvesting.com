@@ -96,62 +96,64 @@
 </style>
 
 <nav
-	class="fixed z-50 w-full bg-white border-b border-gray-200 sm:py-2 dark:bg-gray-800 dark:border-gray-700"
+	class="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur supports-backdrop-blur:bg-white/70 sm:py-2 dark:bg-gray-800/80 dark:supports-backdrop-blur:bg-gray-800/70 dark:border-gray-700"
 >
 	<div class="container p-3 px-5 mx-auto">
 		<div class="flex items-center justify-between">
-			<div class="flex items-center justify-center">
-				<img src="./brideau-logo.svg" class="h-10 mr-3" />
+			<div class="flex items-center justify-center gap-3">
+				<!-- <img src="./brideau-logo.svg" alt="Brideau Investing" class="h-10 w-10" /> -->
 				<span
-					style="font-family: 'Oleo Script', cursive;"
-					class="self-center text-2xl text-green-600 font-semibold whitespace-nowrap dark:text-white"
-					> EP Marketing and Research</span
+					class="self-center text-2xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400"
+					>EP Marketing and Research</span
 				>
 			</div>
 			<button
-				class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+				class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
 				id="add-channel"
 			>
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+					<path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+				</svg>
 				Add Channel
 			</button>
 		</div>
 	</div>
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hide-modal"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hide-modal"
 		id="add-channel-modal"
+		role="dialog"
+		aria-modal="true"
 	>
-		<div class="bg-white p-6 rounded-lg shadow-lg w-1/3 m-auto mt-20">
-			<h2 class="text-xl font-bold mb-4">Add New Channel</h2>
+		<div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-lg m-auto mt-20">
+			<h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-white">Add New Channel</h2>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Add one or many channels, comma separated. "$" symbol is optional.</p>
+			<label for="channel-list-add" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Channels</label>
 			<input
 				type="text"
-				class="border border-gray-400 px-3 py-2 rounded-md w-full mb-1"
-				placeholder="Enter channel name, or list"
+				class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+				placeholder="e.g. $hmr, bbb, utc, $lmr"
 				id="channel-list-add"
+				autofocus
 			/>
-			<span class="text-gray-500 text-sm mb-2 italic font-thin"
-				>Add one or a comma separated list, with or without the "$" symbol</span
-			>
-			<br />
-			<span class="text-gray-500 text-sm mb-2 italic font-thin"
-				>Example: $hmr, bbb, utc, $lmr</span
-			>
-			<br />
-			<input
-				type="text"
-				class="border border-gray-400 px-3 py-2 rounded-md w-1/4 mt-4 mb-4"
-				placeholder="Pin"
-				id="pin"
-			/>
-			<span class="text-red-500 text-sm mb-2 italic font-thin" id="pin-error"
-			></span>
-			<br />
-
-			<button
-				class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-				id="submit">Submit</button
-			>
-			<span class="text-green-500 text-sm mb-2 font-bold" id="success-message"
-			></span>
+			<div class="mt-4 flex items-center gap-4">
+				<div class="flex-1">
+					<label for="pin" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Authorization PIN</label>
+					<input
+						type="password"
+						class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+						placeholder="Enter PIN"
+						id="pin"
+					/>
+					<span class="block mt-1 text-red-500 text-sm italic font-normal" id="pin-error"></span>
+				</div>
+				<div class="pt-6">
+					<button
+						class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						id="submit">Submit</button
+					>
+				</div>
+			</div>
+			<span class="block mt-3 text-green-600 dark:text-green-400 text-sm font-semibold" id="success-message"></span>
 		</div>
 	</div>
 </nav>

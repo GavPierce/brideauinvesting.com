@@ -15,13 +15,22 @@
 	}
 </script>
 <div class="px-4 pt-6">
-	<div class="">
-		<!--Tabs widget -->
-		<div
-			class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800"
-		>
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+		<!-- Weekly Visits Metric Card -->
+		<div class="p-4 bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-xl shadow-sm dark:from-gray-800 dark:to-gray-800/80 dark:border-gray-700 md:col-span-1">
+			<div class="flex items-center justify-between">
+				<div>
+					<h3 class="text-sm font-medium text-blue-700 dark:text-blue-300">Visits This Week</h3>
+					<p class="mt-2 text-3xl font-extrabold text-blue-900 dark:text-white" id="totalWeekly">—</p>
+				</div>
+				<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">Live</span>
+			</div>
+		</div>
+
+		<!-- Tabs Widget -->
+		<div class="md:col-span-2 p-4 bg-white border border-gray-200 rounded-xl shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
 			<ul
-				class="hidden text-sm font-medium text-center text-gray-500 divide-x divide-gray-200 rounded-lg sm:flex dark:divide-gray-600 dark:text-gray-400"
+				class="hidden text-sm font-medium text-center text-gray-600 divide-x divide-gray-200 rounded-lg sm:flex dark:divide-gray-600 dark:text-gray-300"
 				id="fullWidthTab"
 				data-tabs-toggle="#fullWidthTabContent"
 				role="tablist"
@@ -30,7 +39,7 @@
 					<button
 						id="visits-tab"
 						role="tab"
-						class="inline-block w-full p-4 rounded-tl-lg bg-gray-50 hover:bg-gray-100 focus:outline-none dark:bg-gray-700 dark:hover:bg-gray-600"
+						class="inline-block w-full p-3 rounded-tl-lg bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:hover:bg-gray-600"
 						>Channel Visits</button
 					>
 				</li>
@@ -39,7 +48,7 @@
 						id="faq-tab"
 						type="button"
 						role="tab"
-							class="inline-block w-full p-4 rounded-tl-lg bg-gray-50 hover:bg-gray-100 focus:outline-none dark:bg-gray-700 dark:hover:bg-gray-600"
+							class="inline-block w-full p-3 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:hover:bg-gray-600"
 						>Channel Users</button
 					>
 				</li>
@@ -47,100 +56,62 @@
 					<button
 						id="about-tab"
 						role="tab"
-						class="inline-block w-full p-4 rounded-tr-lg bg-gray-50 hover:bg-gray-100 focus:outline-none dark:bg-gray-700 dark:hover:bg-gray-600"
+						class="inline-block w-full p-3 rounded-tr-lg bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:hover:bg-gray-600"
 						>User Visits</button
 					>
 				</li>
 			</ul>
 
-			<div
-				class="border-t border-gray-200 dark:border-gray-600 flex flex-wrap"
-			>
-				<div
-					class="pt-4 overflow-y-scroll h-[30em] w-full lg:w-1/3"
-					id="visits"
-					role="tabpanel"
-					aria-labelledby="visits-tab"
-				>
+			<div class="border-t border-gray-200 dark:border-gray-600 flex flex-wrap">
+				<!-- Column: Channel Visits -->
+				<div class="pt-4 overflow-y-scroll h-[30em] w-full lg:w-1/3" id="visits" role="tabpanel" aria-labelledby="visits-tab">
 					<div class="">
+						<label for="channel-tabs1" class="sr-only">Select channel</label>
 						<select
 							id="channel-tabs1"
-							class="bg-gray-50 border-0 border-b border-gray-200 text-gray-900 text-sm rounded-t-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+							class="bg-gray-50 border-0 border-b border-gray-200 text-gray-900 text-sm rounded-t-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
 						>
 						</select>
 					</div>
-					<ul
-						role="list"
-						id="visits-list"
-						class="divide-y divide-gray-200 dark:divide-gray-700"
-					>
+					<ul role="list" id="visits-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+						<li class="py-3 text-gray-400 text-sm" id="visits-loading">Loading another 100 visits…</li>
 					</ul>
 				</div>
-				<div
-					class=" pt-4 overflow-y-scroll h-[30em] w-full lg:w-1/3"
-					id="faq"
-					role="tabpanel"
-					aria-labelledby="faq-tab"
-				>
+
+				<!-- Column: Channel Users -->
+				<div class=" pt-4 overflow-y-scroll h-[30em] w-full lg:w-1/3" id="faq" role="tabpanel" aria-labelledby="faq-tab">
 					<div class="">
+						<label for="channel-tabs2" class="sr-only">Select channel</label>
 						<select
 							id="channel-tabs2"
-							class="bg-gray-50 border-0 border-b border-gray-200 text-gray-900 text-sm rounded-t-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+							class="bg-gray-50 border-0 border-b border-gray-200 text-gray-900 text-sm rounded-t-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
 						>
 						</select>
 					</div>
-					<ul
-						role="list"
-						id="channel-list"
-						class="divide-y divide-gray-200 dark:divide-gray-700"
-					>
+					<ul role="list" id="channel-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+						<li class="py-3 text-gray-400 text-sm" id="channel-loading">Loading users…</li>
 					</ul>
 				</div>
-				<div
-					class=" pt-4 overflow-y-scroll max-h-[30em] w-full lg:w-1/3"
-					id="about"
-					role="tabpanel"
-					aria-labelledby="about-tab"
-				>
-					<div class="flex items-center justify-center mb-4">
-						<span> @</span><input
+
+				<!-- Column: User Visits Search -->
+				<div class=" pt-4 overflow-y-scroll max-h-[30em] w-full lg:w-1/3" id="about" role="tabpanel" aria-labelledby="about-tab">
+					<div class="flex items-center justify-center mb-4 gap-2">
+						<span class="text-gray-500 dark:text-gray-300">@</span>
+						<input
 							id="user-input"
-							class="bg-gray-50 border-0 border-b border-gray-200 text-gray-900 text-sm rounded-t-lg focus:ring-primary-500 focus:border-primary-500 block w-1/2 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+							placeholder="Search handle (e.g. arioch)"
+							class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 block w-2/3 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
 						/>
-						
 					</div>
-					<div class="text-sm font-medium text-center text-g-500" id="user-info">
-					</div>
-					<ul
-						role="list"
-						id="user-list"
-						class="divide-y divide-gray-200 dark:divide-gray-700"
-					>
+					<div class="text-sm font-medium text-center" id="user-info"></div>
+					<ul role="list" id="user-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+						<li class="py-3 text-gray-400 text-sm" id="user-loading" style="display:none;">Loading…</li>
+						<li class="py-3 text-gray-400 text-sm" id="user-empty" style="display:none;">No visits found for this user.</li>
 					</ul>
 				</div>
-
 			</div>
 		</div>
-		<!-- Card Footer -->
 	</div>
-	<!-- Main widget 
-	<div
-		class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800"
-	>
-		<div class="flex items-center justify-between mb-4">
-			<div class="flex-shrink-0">
-				<span
-					class="text-xl font-bold leading-none text-gray-900 sm:text-2xl dark:text-white"
-					id="totalWeekly"></span>
-				<h3 class="text-base font-light text-gray-500 dark:text-gray-400">
-					Visits This Week
-				</h3>
-			</div>
-		</div>
-
-		<div id="main-chart"></div>
-	</div>
-	-->
 </div>
 <!--  -->
 

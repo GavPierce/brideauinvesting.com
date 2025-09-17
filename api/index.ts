@@ -455,20 +455,48 @@ const server = Bun.serve({
     }
     
     if (url.pathname === "/api/visitsByUser") {
-      const user = url.searchParams.get("user");
+      const userName = url.searchParams.get("user");
+      const publicId = url.searchParams.get("public_id");
+      const userIdParam = url.searchParams.get("userId");
 
-      if (!user) {
+      let query = ``;
+      let params: any[] = [];
+
+      if (publicId) {
+        // Prefer exact match by public_id when provided
+        query = `
+          SELECT visits.*, channels.name as channel_name
+          FROM visits
+          JOIN channels ON visits.channel_id = channels.id
+          WHERE visits.user_id = (SELECT id FROM users WHERE public_id = ?)
+          ORDER BY visits.timestamp DESC;
+        `;
+        params = [publicId];
+      } else if (userIdParam) {
+        // Allow direct lookup by numeric userId
+        query = `
+          SELECT visits.*, channels.name as channel_name
+          FROM visits
+          JOIN channels ON visits.channel_id = channels.id
+          WHERE visits.user_id = ?
+          ORDER BY visits.timestamp DESC;
+        `;
+        params = [Number(userIdParam)];
+      } else if (userName) {
+        // Fallback: names are not unique; include all matching user ids
+        query = `
+          SELECT visits.*, channels.name as channel_name
+          FROM visits
+          JOIN channels ON visits.channel_id = channels.id
+          WHERE visits.user_id IN (SELECT id FROM users WHERE name = ?)
+          ORDER BY visits.timestamp DESC;
+        `;
+        params = [userName];
+      } else {
         return new Response("Missing parameters", { status: 400 });
       }
 
-      const query = `
-      SELECT visits.*, channels.name as channel_name
-      FROM visits
-      JOIN channels ON visits.channel_id = channels.id
-      WHERE visits.user_id = (SELECT id FROM users WHERE name = ?)
-      ORDER BY visits.timestamp DESC;
-    `;
-      return new Response(JSON.stringify(db.query(query).all(user)), {
+      return new Response(JSON.stringify(db.query(query).all(...params)), {
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*", // Allow all origins

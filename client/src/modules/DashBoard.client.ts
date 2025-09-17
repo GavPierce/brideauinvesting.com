@@ -281,6 +281,44 @@ function formatTime(timestamp: string) {
 	let time = new Date(timestamp);
 	return time.toLocaleString('en-US', options);
 }
+
+	// Shared renderer to load and display a user's visits by precise identifier
+	async function renderUserVisitsByQuery(query: { public_id?: string; userId?: number; name?: string }) {
+		const userList = document.getElementById('user-list');
+		while (userList?.firstChild) {
+			userList.removeChild(userList.firstChild);
+		}
+
+		let url = 'https://api.brideauinvesting.com/api/visitsByUser';
+		if (query.public_id) {
+			url += `?public_id=${encodeURIComponent(query.public_id)}`;
+		} else if (typeof query.userId === 'number') {
+			url += `?userId=${query.userId}`;
+		} else if (query.name) {
+			url += `?user=@${encodeURIComponent(query.name)}`;
+		}
+
+		const response = await fetch(url);
+		const data = await response.json();
+
+		data.forEach((visit: any) => {
+			let li = document.createElement('li');
+			li.classList.add('py-3', 'sm:py-4');
+			li.innerHTML = `
+							<div class="flex items-center space-x-4">
+								<div class="flex-1 min-w-0">
+									<p class="font-medium text-gray-900 truncate dark:text-white">
+										${formatTime(visit.timestamp)}
+									</p>
+								</div>
+								<div class="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
+									${visit.channel_name}
+								</div>
+							</div>
+			`;
+			userList?.appendChild(li);
+		});
+	}
 if (document.getElementById('channel-tabs1')) {
 	// Track current page and limit
 	let currentPage = 1;
@@ -320,7 +358,7 @@ if (document.getElementById('channel-tabs1')) {
 			li.classList.add('py-1', 'sm:py-1');
 
 			li.innerHTML = `
-				<button class="toggle-about-btn">
+				<button class="toggle-about-btn" data-user-id="${visit.user_id}" data-online="${visit.online ? 1 : 0}" data-name="${visit.name}">
 					<div class="flex items-center justify-between cursor-pointer hover:bg-blue-200">
 						<div class="flex items-center min-w-0">
 							<div class="ml-3 flex">
@@ -340,17 +378,29 @@ if (document.getElementById('channel-tabs1')) {
 				</button>
 			`;
 
-			li.querySelector('.toggle-about-btn')?.addEventListener('click', function () {
+			li.querySelector('.toggle-about-btn')?.addEventListener('click', async function () {
 				const aboutDiv = document.getElementById('about-tab');
 				if (aboutDiv) aboutDiv.click();
 
-				const name = li.querySelector('#name')?.textContent;
-				const nameWithoutWhitespace = name?.replace(/\s/g, '').replace('@', '') as string;
+				const btn = li.querySelector('.toggle-about-btn') as HTMLElement;
+				const userIdAttr = btn.getAttribute('data-user-id') || '';
+				const onlineAttr = btn.getAttribute('data-online') || '0';
+				const nameAttr = btn.getAttribute('data-name') || '';
+
 				const userInput = document.getElementById('user-input') as HTMLInputElement;
 				if (userInput) {
-					userInput.value = nameWithoutWhitespace;
-					userInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+					userInput.value = (nameAttr || '').replace(/\s/g, '').replace('@', '');
 				}
+
+				const userInfo = document.getElementById('user-info') as HTMLElement;
+				if (userInfo) {
+					const isOnline = onlineAttr === '1';
+					userInfo.innerHTML = isOnline ? 'Online' : 'Offline';
+					userInfo.classList.toggle('text-green-500', isOnline);
+					userInfo.classList.toggle('text-red-500', !isOnline);
+				}
+
+				await renderUserVisitsByQuery({ userId: Number(userIdAttr) });
 			});
 
 			channelList?.insertBefore(li, loadingSpinner);
@@ -417,7 +467,7 @@ if (document.getElementById('channel-tabs2')) {
 			li.classList.add('py-1', 'sm:py-2');
 
 			li.innerHTML = `
-				<button class="toggle-about-btn">
+				<button class="toggle-about-btn" data-public-id="${visit.public_id}" data-online="${visit.online ? 1 : 0}" data-name="${visit.name}">
 					<div class="flex items-center justify-between cursor-pointer hover:bg-green-200">
 						<div class="flex items-center min-w-0">
 							<div class="ml-3 flex">
@@ -437,17 +487,29 @@ if (document.getElementById('channel-tabs2')) {
 				</button>
 			`;
 
-			li.querySelector('.toggle-about-btn')?.addEventListener('click', () => {
+			li.querySelector('.toggle-about-btn')?.addEventListener('click', async () => {
 				const aboutDiv = document.getElementById('about-tab');
 				if (aboutDiv) aboutDiv.click();
 
-				const name = li.querySelector('#name')?.textContent;
-				const nameWithoutWhitespace = name?.replace(/\s/g, '').replace('@', '') as string;
+				const btn = li.querySelector('.toggle-about-btn') as HTMLElement;
+				const publicId = btn.getAttribute('data-public-id') || '';
+				const onlineAttr = btn.getAttribute('data-online') || '0';
+				const nameAttr = btn.getAttribute('data-name') || '';
+
 				const userInput = document.getElementById('user-input') as HTMLInputElement;
 				if (userInput) {
-					userInput.value = nameWithoutWhitespace;
-					userInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+					userInput.value = (nameAttr || '').replace(/\s/g, '').replace('@', '');
 				}
+
+				const userInfo = document.getElementById('user-info') as HTMLElement;
+				if (userInfo) {
+					const isOnline = onlineAttr === '1';
+					userInfo.innerHTML = isOnline ? 'Online' : 'Offline';
+					userInfo.classList.toggle('text-green-500', isOnline);
+					userInfo.classList.toggle('text-red-500', !isOnline);
+				}
+
+				await renderUserVisitsByQuery({ public_id: publicId });
 			});
 
 			channelList?.appendChild(li);
@@ -486,18 +548,11 @@ if (document.getElementById('user-input')) {
 	userInput.addEventListener('keydown', async (event: any) => {
 		// if its enter
 		if (event.key === 'Enter') {
-			while (userList?.firstChild) {
-				userList.removeChild(userList.firstChild);
-			}
 			let user = (event.target as HTMLInputElement).value;
 			let userInfo = document.getElementById('user-info') as HTMLElement;
 			userInfo.innerHTML = `Loading...`;
 
-			// get user data
-			const response = await fetch(
-				`https://api.brideauinvesting.com/api/visitsByUser?user=@${user}`,
-			);
-			let data = await response.json();
+			// Check online status across all matching handles (names are not unique)
 			let userData = await fetch(
 				`https://api.brideauinvesting.com/api/user/getByName?name=@${user}`,
 			);
@@ -512,35 +567,11 @@ if (document.getElementById('user-input')) {
 				userInfo.classList.remove('text-red-500');
 			} else {
 				userInfo.innerHTML = 'Offline';
-
 				userInfo.classList.add('text-red-500');
 				userInfo.classList.remove('text-green-500');
 			}
-			// Add the data to the list
-			data.forEach((visit: any) => {
-				let li = document.createElement('li');
-				li.classList.add('py-3', 'sm:py-4');
 
-				// Create the inner HTML dynamically with user info and formatted timestamp
-				li.innerHTML = `
-							<div class="flex items-center space-x-4">
-
-								<div class="flex-1 min-w-0">
-									<p class="font-medium text-gray-900 truncate dark:text-white">
-										${formatTime(visit.timestamp)}
-									</p>
-						
-								</div>
-								<div
-									class="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white"
-								>
-									${visit.channel_name}
-								</div>
-							</div>
-				`;
-
-				userList?.appendChild(li);
-			});
+			await renderUserVisitsByQuery({ name: user });
 		}
 	});
 }

@@ -104,26 +104,30 @@ let cleanChannelList = (list: string) => {
 	}
 </style>
 <footer
-	class="md:flex md:items-center md:justify-between px-4 2xl:px-0 py-6 md:py-10"
+	class="md:flex md:items-center md:justify-between px-4 2xl:px-0 py-6 md:py-8 border-t border-gray-200 bg-white/60 backdrop-blur dark:bg-gray-800/60 dark:border-gray-700"
 >
 	<CopyrightNotice />
-	<button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-5" id="remove-channel" >
+	<button class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-rose-500 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 mr-5" id="remove-channel" >
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M6 8a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 1a1 1 0 10-2 0v6a1 1 0 102 0V9z" clip-rule="evenodd"/><path d="M4 6h12v2H4z"/><path fill-rule="evenodd" d="M8 2a2 2 0 00-2 2v1H4a1 1 0 000 2h12a1 1 0 100-2h-2V4a2 2 0 00-2-2H8zm4 3V4a1 1 0 00-1-1H9a1 1 0 00-1 1v1h4z" clip-rule="evenodd"/></svg>
 		Remove Channel
 	</button>
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hide-modal " id="remove-channel-modal">
-		<div class="bg-white p-6 rounded-lg shadow-lg w-1/3 m-auto mt-20">
-		  <h2 class="text-xl font-bold mb-4">Remove Channel</h2>
-		  <input type="text" class="border border-gray-400 px-3 py-2 rounded-md w-full mb-1" placeholder="Enter channel name, or list" id="channel-list-delete" />
-		  <span class="text-gray-500 text-sm mb-2 italic font-thin">Add one or a comma separated list, with or without the "$" symbol</span>
-		  <br>
-		  <span class="text-red-500 text-sm mb-2 italic font-thin">This will permantely remove the channel</span>
-		  <br>
-		  <input type="text" class="border border-gray-400 px-3 py-2 rounded-md w-1/4 mt-4 mb-4" placeholder="Pin" id="pin-delete"/>
-		  <span class="text-red-500 text-sm mb-2 italic font-thin" id="pin-error-delete"></span>
-		  <br>
-
-		  <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" id="delete">DELETE</button>
-		  <span class="text-green-500 text-sm mb-2 font-bold" id="success-message-delete"></span>
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hide-modal" id="remove-channel-modal" role="dialog" aria-modal="true">
+		<div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-lg m-auto mt-20">
+		  <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-white">Remove Channels</h2>
+		  <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Enter one or many channels to remove. Comma separated. "$" symbol is optional. This action is permanent.</p>
+		  <label for="channel-list-delete" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Channels</label>
+		  <input type="text" class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-rose-500" placeholder="e.g. $hmr, bbb, utc, $lmr" id="channel-list-delete" />
+		  <div class="mt-4 flex items-center gap-4">
+		  	<div class="flex-1">
+		  		<label for="pin-delete" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Authorization PIN</label>
+		  		<input type="password" class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-rose-500" placeholder="Enter PIN" id="pin-delete"/>
+		  		<span class="block mt-1 text-red-500 text-sm italic font-normal" id="pin-error-delete"></span>
+		  	</div>
+		  	<div class="pt-6">
+		  		<button class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-rose-500 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-rose-500" id="delete">DELETE</button>
+		  	</div>
+		  </div>
+		  <span class="block mt-3 text-green-600 dark:text-green-400 text-sm font-semibold" id="success-message-delete"></span>
 		</div>
 	  </div>
 </footer>
