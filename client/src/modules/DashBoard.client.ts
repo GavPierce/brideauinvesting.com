@@ -1,7 +1,43 @@
 /* eslint-disable max-lines */
 
 import ApexCharts from 'apexcharts';
-import { animate, timeline } from 'motion';
+import { animate } from 'motion';
+
+// Skeleton loader utilities accessible across sections
+const skeletonsByList = new Map<HTMLElement, HTMLElement[]>();
+
+function showSkeletons(listEl: HTMLElement, count: number) {
+    // Clear any existing skeletons for this list
+    clearSkeletons(listEl);
+    const batch: HTMLElement[] = [];
+    for (let i = 0; i < count; i++) {
+        const sk = document.createElement('li');
+        sk.className = 'py-2 sm:py-2';
+        sk.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+            </div>`;
+        listEl.appendChild(sk);
+        batch.push(sk);
+        animate(sk, { opacity: [0.4, 1] }, { duration: 1, direction: 'alternate', repeat: Infinity });
+    }
+    skeletonsByList.set(listEl, batch);
+}
+
+function clearSkeletons(listEl?: HTMLElement) {
+    if (listEl) {
+        const batch = skeletonsByList.get(listEl) || [];
+        batch.forEach((el) => el.remove());
+        skeletonsByList.delete(listEl);
+        return;
+    }
+    // Fallback: clear all
+    skeletonsByList.forEach((batch, key) => {
+        batch.forEach((el) => el.remove());
+    });
+    skeletonsByList.clear();
+}
 
 let responseData = await fetch('https://api.brideauinvesting.com/api/getChannels');
 let channelObject = await responseData.json() as {channels: string[]};
@@ -330,7 +366,6 @@ if (document.getElementById('channel-tabs1')) {
 	const select = document.getElementById('channel-tabs1') as HTMLSelectElement;
     const channelList = document.getElementById('visits-list');
     const visitsContainer = document.getElementById('visits'); // container with scroll
-    let skeletonBatch: HTMLElement[] = [];
 
 	channels.forEach((channel) => {
 		const option = document.createElement('option');
@@ -346,34 +381,11 @@ if (document.getElementById('channel-tabs1')) {
 		return await response.json();
 	}
 
-    function showSkeletons(listEl: HTMLElement, count: number) {
-        // Clear old skeletons
-        skeletonBatch.forEach((el) => el.remove());
-        skeletonBatch = [];
-        for (let i = 0; i < count; i++) {
-            const sk = document.createElement('li');
-            sk.className = 'py-2 sm:py-2';
-            sk.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
-                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
-                </div>`;
-            listEl.appendChild(sk);
-            skeletonBatch.push(sk);
-            animate(sk, { opacity: [0.4, 1] }, { duration: 1, direction: 'alternate', repeat: Infinity });
-        }
-    }
-
-    function clearSkeletons() {
-        skeletonBatch.forEach((el) => el.remove());
-        skeletonBatch = [];
-    }
-
     async function loadVisits(channel: string, page: number) {
         loading = true;
-        if (channelList) showSkeletons(channelList, 6);
+        if (channelList) showSkeletons(channelList as HTMLElement, 6);
         const data = await fetchVisits(channel, page);
-        clearSkeletons();
+        clearSkeletons(channelList as HTMLElement);
 
         // Append the data to the list
         data.forEach((visit: any) => {
@@ -481,9 +493,9 @@ if (document.getElementById('channel-tabs2')) {
 
 	// Load visits into the list
     async function loadVisits(channel: string) {
-        if (channelList) showSkeletons(channelList, 6);
+        if (channelList) showSkeletons(channelList as HTMLElement, 6);
         const data = await fetchVisits(channel);
-        clearSkeletons();
+        clearSkeletons(channelList as HTMLElement);
 
         // Add the data to the list
         data.forEach((visit: any) => {
@@ -575,7 +587,7 @@ if (document.getElementById('user-input')) {
 			let user = (event.target as HTMLInputElement).value;
 			let userInfo = document.getElementById('user-info') as HTMLElement;
             userInfo.innerHTML = ``;
-            if (userList) showSkeletons(userList, 4);
+            if (userList) showSkeletons(userList as HTMLElement, 4);
 
 			// Check online status across all matching handles (names are not unique)
 			let userData = await fetch(
@@ -597,7 +609,7 @@ if (document.getElementById('user-input')) {
 			}
 
             await renderUserVisitsByQuery({ name: user });
-            clearSkeletons();
+            clearSkeletons(userList as HTMLElement);
 		}
 	});
 }
