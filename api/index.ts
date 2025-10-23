@@ -148,11 +148,23 @@ function updateOnlineStatus(activeUserIds: number[]): void {
   }
 }
 
+// Helper function to validate channel names
+function isValidChannelName(channel: any): boolean {
+  return channel != null && typeof channel === 'string' && channel.trim() !== '';
+}
+
 // Simulate fetching online users from the API (this should be called periodically)
 let activeUserIds: number[] = [];
 
 async function fetchAndLogUsers(channelName: string) {
   const startTime = Date.now();
+  
+  // Validate channel name before processing
+  if (!isValidChannelName(channelName)) {
+    console.error(`[${new Date().toISOString()}] ❌ Invalid channel name: "${channelName}" - skipping`);
+    return;
+  }
+  
   try {
     console.log(`[${new Date().toISOString()}] 🔍 Fetching users for channel: ${channelName}`);
     
@@ -685,10 +697,10 @@ const server = Bun.serve({
       }
       if (req.method === "POST") {
         const body = (await req.json()) as any;
-        const channels = body.channels;
+        let channels = body.channels;
         const pin = body.pin;
 
-        if (channels == null || channels.length == 0 || channels[0] == "") {
+        if (channels == null || channels.length == 0) {
           return new Response("Channel list is empty", {
             status: 400,
             headers: {
@@ -699,6 +711,22 @@ const server = Bun.serve({
             },
           });
         }
+        
+        // Filter out empty, null, or whitespace-only channel names
+        channels = channels.filter((ch: any) => isValidChannelName(ch));
+        
+        if (channels.length === 0) {
+          return new Response("All channel names are invalid (empty or whitespace)", {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+          });
+        }
+        
         if (pin != 4756) {
           return new Response("Incorrect Auth Pin", {
             status: 401,
@@ -713,7 +741,10 @@ const server = Bun.serve({
 
         // 1. Read the existing data from the JSON file
         const data = await fs.readFileSync("channels.json", "utf8");
-        const existingStrings = JSON.parse(data);
+        let existingStrings = JSON.parse(data);
+        
+        // Clean existing strings - remove any empty/invalid entries
+        existingStrings = existingStrings.filter((ch: any) => isValidChannelName(ch));
 
         // 2. Filter out strings that already exist
         const uniqueNewStrings = channels.filter(
@@ -728,8 +759,10 @@ const server = Bun.serve({
           "channels.json",
           JSON.stringify(updatedStrings, null, 2)
         );
+        
+        console.log(`[${new Date().toISOString()}] ✅ Added ${uniqueNewStrings.length} new channels, cleaned ${channels.length - uniqueNewStrings.length} duplicates`);
 
-        return new Response(JSON.stringify({ channels: channels }), {
+        return new Response(JSON.stringify({ channels: uniqueNewStrings, added: uniqueNewStrings.length }), {
           headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*", // Allow all origins
@@ -803,6 +836,82 @@ const server = Bun.serve({
       }
     }
     
+    if (url.pathname === "/api/cleanChannels") {
+      // Endpoint to clean up invalid channels from channels.json
+      if (req.method === "OPTIONS") {
+        return new Response(null, {
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        });
+      }
+      
+      if (req.method === "POST") {
+        try {
+          const body = (await req.json()) as any;
+          const pin = body.pin;
+          
+          if (pin != 4756) {
+            return new Response("Incorrect Auth Pin", {
+              status: 401,
+              headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+              },
+            });
+          }
+          
+          console.log(`[${new Date().toISOString()}] [${requestId}] 🧹 Cleaning channels.json...`);
+          
+          const data = fs.readFileSync("channels.json", "utf8");
+          let channels = JSON.parse(data);
+          const originalCount = channels.length;
+          
+          // Filter out invalid channel names
+          channels = channels.filter((ch: any) => isValidChannelName(ch));
+          
+          const removedCount = originalCount - channels.length;
+          
+          // Write cleaned channels back
+          fs.writeFileSync(
+            "channels.json",
+            JSON.stringify(channels, null, 2)
+          );
+          
+          console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Cleaned ${removedCount} invalid channels`);
+          
+          return new Response(JSON.stringify({ 
+            original: originalCount,
+            cleaned: channels.length,
+            removed: removedCount,
+            channels 
+          }), {
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+          });
+        } catch (error: any) {
+          console.error(`[${new Date().toISOString()}] [${requestId}] ❌ Error cleaning channels:`, error.message);
+          return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+          });
+        }
+      }
+    }
+    
     if (url.pathname === "/api/getChannels") {
       try {
         console.log(`[${new Date().toISOString()}] [${requestId}] 📖 Reading channels.json...`);
@@ -827,9 +936,18 @@ const server = Bun.serve({
         const fileReadElapsed = Date.now() - fileReadStart;
         console.log(`[${new Date().toISOString()}] [${requestId}] File read in ${fileReadElapsed}ms`);
         
-        const channels = JSON.parse(data);
+        let channels = JSON.parse(data);
+        const originalCount = channels.length;
+        
+        // Filter out invalid channel names (empty, null, or whitespace-only)
+        channels = channels.filter((ch: any) => isValidChannelName(ch));
+        
+        if (channels.length !== originalCount) {
+          console.warn(`[${new Date().toISOString()}] [${requestId}] ⚠️  Filtered out ${originalCount - channels.length} invalid channels`);
+        }
+        
         const totalElapsed = Date.now() - requestStart;
-        console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Success: ${channels.length} channels, total ${totalElapsed}ms`);
+        console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Success: ${channels.length} valid channels, total ${totalElapsed}ms`);
         
         return new Response(JSON.stringify({ channels }), {
           headers: {
@@ -874,11 +992,20 @@ setInterval(async () => {
     const startTime = Date.now();
     
     // get channel from channels.json
-    const channels = JSON.parse(
+    let channels = JSON.parse(
       fs.readFileSync("channels.json", "utf8")
     ) as string[];
     
-    console.log(`[${new Date().toISOString()}] 📋 Found ${channels.length} channels to process`);
+    const originalCount = channels.length;
+    
+    // Filter out invalid channel names (empty, null, or whitespace-only)
+    channels = channels.filter((ch: any) => isValidChannelName(ch));
+    
+    if (channels.length !== originalCount) {
+      console.warn(`[${new Date().toISOString()}] ⚠️  Filtered out ${originalCount - channels.length} invalid channels from periodic fetch`);
+    }
+    
+    console.log(`[${new Date().toISOString()}] 📋 Found ${channels.length} valid channels to process`);
     
     // Process channels in parallel with a maximum of 5 concurrent requests
     const batchSize = 5;
