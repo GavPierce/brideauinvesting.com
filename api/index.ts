@@ -154,11 +154,11 @@ let activeUserIds: number[] = [];
 async function fetchAndLogUsers(channelName: string) {
   const startTime = Date.now();
   try {
-    console.log(`[${new Date().toISOString()}] Fetching users for channel: ${channelName}`);
+    console.log(`[${new Date().toISOString()}] 🔍 Fetching users for channel: ${channelName}`);
     
     // Add timeout to prevent hanging
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
     const response = await fetch(
       `https://api.ceo.ca/api/channels/online_users?channel=${channelName}`,
@@ -168,10 +168,10 @@ async function fetchAndLogUsers(channelName: string) {
     clearTimeout(timeoutId);
     
     const elapsed = Date.now() - startTime;
-    console.log(`[${new Date().toISOString()}] Fetch completed for ${channelName} in ${elapsed}ms, status: ${response.status}`);
+    console.log(`[${new Date().toISOString()}] ⏱️  Fetch completed for ${channelName} in ${elapsed}ms, status: ${response.status}`);
 
     if (!response.ok) {
-      console.error(`[${new Date().toISOString()}] Failed to fetch online users for ${channelName}: ${response.status} ${response.statusText}`);
+      console.error(`[${new Date().toISOString()}] ❌ Failed to fetch online users for ${channelName}: ${response.status} ${response.statusText}`);
       return;
     }
     
@@ -195,9 +195,9 @@ async function fetchAndLogUsers(channelName: string) {
   } catch (error: any) {
     const elapsed = Date.now() - startTime;
     if (error.name === 'AbortError') {
-      console.error(`[${new Date().toISOString()}] Timeout fetching users for ${channelName} after ${elapsed}ms`);
+      console.error(`[${new Date().toISOString()}] ⏰ Timeout fetching users for ${channelName} after ${elapsed}ms`);
     } else {
-      console.error(`[${new Date().toISOString()}] Error fetching users for ${channelName} after ${elapsed}ms:`, error.message);
+      console.error(`[${new Date().toISOString()}] ❌ Error fetching users for ${channelName} after ${elapsed}ms:`, error.message, '\nStack:', error.stack);
     }
   }
 }
@@ -206,7 +206,33 @@ async function fetchAndLogUsers(channelName: string) {
 const server = Bun.serve({
   port: 3008,
   async fetch(req) {
+    const requestStart = Date.now();
     const url = new URL(req.url);
+    const requestId = Math.random().toString(36).substring(7);
+    
+    console.log(`[${new Date().toISOString()}] [${requestId}] ➡️  ${req.method} ${url.pathname}${url.search}`);
+    
+    // Health check endpoint - should always respond quickly
+    if (url.pathname === "/api/health") {
+      const totalElapsed = Date.now() - requestStart;
+      const status = {
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        isFetchingUsers,
+        responseTime: totalElapsed
+      };
+      console.log(`[${new Date().toISOString()}] [${requestId}] ⬅️  Health check (${totalElapsed}ms)`);
+      return new Response(JSON.stringify(status), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+    
     if (url.pathname === "/api/visits/chageDates") {
       // add 100 random visits, 50 for yesterday and 50 for tomorrow, randomly for all channels and users
 
@@ -779,12 +805,32 @@ const server = Bun.serve({
     
     if (url.pathname === "/api/getChannels") {
       try {
-        console.log(`[${new Date().toISOString()}] GET /api/getChannels - Reading channels.json`);
-        const startTime = Date.now();
-        const data = await fs.readFileSync("channels.json", "utf8");
-        const elapsed = Date.now() - startTime;
+        console.log(`[${new Date().toISOString()}] [${requestId}] 📖 Reading channels.json...`);
+        const fileReadStart = Date.now();
+        
+        // Check if file exists first
+        if (!fs.existsSync("channels.json")) {
+          const err = `channels.json not found in ${process.cwd()}`;
+          console.error(`[${new Date().toISOString()}] [${requestId}] ❌ ${err}`);
+          return new Response(JSON.stringify({ error: err }), {
+            status: 404,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+          });
+        }
+        
+        const data = fs.readFileSync("channels.json", "utf8");
+        const fileReadElapsed = Date.now() - fileReadStart;
+        console.log(`[${new Date().toISOString()}] [${requestId}] File read in ${fileReadElapsed}ms`);
+        
         const channels = JSON.parse(data);
-        console.log(`[${new Date().toISOString()}] GET /api/getChannels - Success (${elapsed}ms), ${channels.length} channels`);
+        const totalElapsed = Date.now() - requestStart;
+        console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Success: ${channels.length} channels, total ${totalElapsed}ms`);
+        
         return new Response(JSON.stringify({ channels }), {
           headers: {
             "Content-Type": "application/json",
@@ -794,7 +840,8 @@ const server = Bun.serve({
           },
         });
       } catch (error: any) {
-        console.error(`[${new Date().toISOString()}] GET /api/getChannels - Error:`, error.message);
+        const totalElapsed = Date.now() - requestStart;
+        console.error(`[${new Date().toISOString()}] [${requestId}] ❌ Error after ${totalElapsed}ms:`, error.message, error.stack);
         return new Response(JSON.stringify({ error: "Failed to read channels", details: error.message }), {
           status: 500,
           headers: {
@@ -806,13 +853,24 @@ const server = Bun.serve({
         });
       }
     }
+    const totalElapsed = Date.now() - requestStart;
+    console.log(`[${new Date().toISOString()}] [${requestId}] ⬅️  404 Not Found (${totalElapsed}ms)`);
     return new Response("Not Found", { status: 404 });
   },
 });
 
+// Prevent overlapping executions
+let isFetchingUsers = false;
+
 setInterval(async () => {
+  if (isFetchingUsers) {
+    console.warn(`[${new Date().toISOString()}] ⚠️  Skipping periodic fetch - previous fetch still in progress`);
+    return;
+  }
+  
+  isFetchingUsers = true;
   try {
-    console.log(`[${new Date().toISOString()}] Starting periodic user fetch...`);
+    console.log(`[${new Date().toISOString()}] 🔄 Starting periodic user fetch...`);
     const startTime = Date.now();
     
     // get channel from channels.json
@@ -820,21 +878,27 @@ setInterval(async () => {
       fs.readFileSync("channels.json", "utf8")
     ) as string[];
     
-    console.log(`[${new Date().toISOString()}] Found ${channels.length} channels to process`);
+    console.log(`[${new Date().toISOString()}] 📋 Found ${channels.length} channels to process`);
     
-    // Process channels sequentially to avoid overwhelming the external API
-    for (const channel of channels) {
-      await fetchAndLogUsers(channel);
+    // Process channels in parallel with a maximum of 5 concurrent requests
+    const batchSize = 5;
+    for (let i = 0; i < channels.length; i += batchSize) {
+      const batch = channels.slice(i, i + batchSize);
+      console.log(`[${new Date().toISOString()}] Processing batch ${Math.floor(i/batchSize) + 1} (${batch.length} channels)`);
+      await Promise.all(batch.map(channel => fetchAndLogUsers(channel)));
     }
     
     updateOnlineStatus(activeUserIds);
     activeUserIds = [];
     
     const elapsed = Date.now() - startTime;
-    console.log(`[${new Date().toISOString()}] Completed periodic user fetch in ${elapsed}ms`);
+    console.log(`[${new Date().toISOString()}] ✅ Completed periodic user fetch in ${elapsed}ms`);
   } catch (error: any) {
-    console.error(`[${new Date().toISOString()}] Error in periodic user fetch:`, error.message);
+    console.error(`[${new Date().toISOString()}] ❌ Error in periodic user fetch:`, error.message, error.stack);
+  } finally {
+    isFetchingUsers = false;
   }
 }, 20000);
 
+console.log(`[${new Date().toISOString()}] 🚀 Server starting...`);
 console.log(`Listening on http://localhost:3008 ...`);
