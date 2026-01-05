@@ -115,17 +115,18 @@ function logVisit(
 }
 
 // Function to mark users as offline if they were previously online but are not in the current list of users
-function updateOnlineStatus(activeUserIds: number[]): void {
-  if (activeUserIds.length > 0) {
+function updateOnlineStatus(activeUserIds: Set<number> | number[]): void {
+  const userIdArray = Array.isArray(activeUserIds) ? activeUserIds : Array.from(activeUserIds);
+  if (userIdArray.length > 0) {
     // Set users with IDs in `activeUserIds` as online
     db.run(
       `
       UPDATE users 
       SET online = true
-      WHERE id IN (${activeUserIds.map(() => "?").join(",")})
+      WHERE id IN (${userIdArray.map(() => "?").join(",")})
       AND online = false
       `,
-      activeUserIds
+      userIdArray
     );
 
     // Set users as offline who are not in `activeUserIds` but are currently online
@@ -133,10 +134,10 @@ function updateOnlineStatus(activeUserIds: number[]): void {
       `
       UPDATE users 
       SET online = false 
-      WHERE id NOT IN (${activeUserIds.map(() => "?").join(",")})
+      WHERE id NOT IN (${userIdArray.map(() => "?").join(",")})
       AND online = true
       `,
-      activeUserIds
+      userIdArray
     );
   } else {
     // If no active users, set all online users as offline
@@ -154,31 +155,33 @@ function isValidChannelName(channel: any): boolean {
 }
 
 // Simulate fetching online users from the API (this should be called periodically)
-let activeUserIds: number[] = [];
+// Use a Set for O(1) lookups and automatic deduplication
+let activeUserIds: Set<number> = new Set();
+const MAX_ACTIVE_USERS = 10000; // Prevent unbounded memory growth
 
 async function fetchAndLogUsers(channelName: string) {
   const startTime = Date.now();
-  
+
   // Validate channel name before processing
   if (!isValidChannelName(channelName)) {
     console.error(`[${new Date().toISOString()}] ❌ Invalid channel name: "${channelName}" - skipping`);
     return;
   }
-  
+
   try {
     console.log(`[${new Date().toISOString()}] 🔍 Fetching users for channel: ${channelName}`);
-    
+
     // Add timeout to prevent hanging
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    
+
     const response = await fetch(
       `https://api.ceo.ca/api/channels/online_users?channel=${channelName}`,
       { signal: controller.signal }
     );
-    
+
     clearTimeout(timeoutId);
-    
+
     const elapsed = Date.now() - startTime;
     console.log(`[${new Date().toISOString()}] ⏱️  Fetch completed for ${channelName} in ${elapsed}ms, status: ${response.status}`);
 
@@ -186,7 +189,7 @@ async function fetchAndLogUsers(channelName: string) {
       console.error(`[${new Date().toISOString()}] ❌ Failed to fetch online users for ${channelName}: ${response.status} ${response.statusText}`);
       return;
     }
-    
+
     const data = (await response.json()) as any;
     const timestamp = new Date().toISOString();
 
@@ -196,13 +199,16 @@ async function fetchAndLogUsers(channelName: string) {
       console.log(`[${new Date().toISOString()}] No users data for channel: ${channelName}`);
       return;
     }
-    
+
     console.log(`[${new Date().toISOString()}] Found ${data.users.length} users for channel: ${channelName}`);
     data?.users.forEach((user: any) => {
       const user_id = getOrCreateUserId(user.public_id, user.name || "Unknown");
       const channel_id = getOrCreateChannelId(channelName);
       logVisit(user_id, channel_id, timestamp);
-      activeUserIds.push(user_id);
+      // Add to Set with size limit to prevent memory leaks
+      if (activeUserIds.size < MAX_ACTIVE_USERS) {
+        activeUserIds.add(user_id);
+      }
     });
   } catch (error: any) {
     const elapsed = Date.now() - startTime;
@@ -221,21 +227,36 @@ const server = Bun.serve({
     const requestStart = Date.now();
     const url = new URL(req.url);
     const requestId = Math.random().toString(36).substring(7);
-    
+
     console.log(`[${new Date().toISOString()}] [${requestId}] ➡️  ${req.method} ${url.pathname}${url.search}`);
-    
+
     // Health check endpoint - should always respond quickly
     if (url.pathname === "/api/health") {
       const totalElapsed = Date.now() - requestStart;
+
+      // Get memory usage statistics
+      const memUsage = process.memoryUsage();
+      const formatBytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
       const status = {
         status: "ok",
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
+        uptimeFormatted: `${Math.floor(process.uptime() / 86400)}d ${Math.floor((process.uptime() % 86400) / 3600)}h ${Math.floor((process.uptime() % 3600) / 60)}m`,
         isFetchingUsers,
+        activeUsersTracked: activeUserIds.size,
+        memory: {
+          heapUsed: formatBytes(memUsage.heapUsed),
+          heapTotal: formatBytes(memUsage.heapTotal),
+          rss: formatBytes(memUsage.rss),
+          external: formatBytes(memUsage.external),
+          heapUsedRaw: memUsage.heapUsed,
+          heapTotalRaw: memUsage.heapTotal,
+        },
         responseTime: totalElapsed
       };
-      console.log(`[${new Date().toISOString()}] [${requestId}] ⬅️  Health check (${totalElapsed}ms)`);
-      return new Response(JSON.stringify(status), {
+      console.log(`[${new Date().toISOString()}] [${requestId}] ⬅️  Health check (${totalElapsed}ms) - Heap: ${status.memory.heapUsed}/${status.memory.heapTotal}`);
+      return new Response(JSON.stringify(status, null, 2), {
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
@@ -244,7 +265,7 @@ const server = Bun.serve({
         },
       });
     }
-    
+
     if (url.pathname === "/api/visits/chageDates") {
       // add 100 random visits, 50 for yesterday and 50 for tomorrow, randomly for all channels and users
 
@@ -561,14 +582,14 @@ const server = Bun.serve({
       const channel = url.searchParams.get("channel");
       const page = parseInt(url.searchParams.get("page") || "1");
       const limit = parseInt(url.searchParams.get("limit") || "100");
-    
+
       if (!channel) {
         return new Response("Missing parameters", { status: 400 });
       }
-    
+
       // Calculate offset based on the page and limit
       const offset = (page - 1) * limit;
-    
+
       // Get paginated users with last visit information
       const query = `
         SELECT u.*, v.last_visit
@@ -582,9 +603,9 @@ const server = Bun.serve({
         ORDER BY v.last_visit DESC
         LIMIT ? OFFSET ?;
       `;
-    
+
       const results = db.query(query).all(channel, limit, offset);
-    
+
       return new Response(JSON.stringify(results), {
         headers: {
           "Content-Type": "application/json",
@@ -594,7 +615,7 @@ const server = Bun.serve({
         },
       });
     }
-    
+
     if (url.pathname === "/api/visitsByUser") {
       const userName = url.searchParams.get("user");
       const publicId = url.searchParams.get("public_id");
@@ -652,14 +673,14 @@ const server = Bun.serve({
       const channel = url.searchParams.get("channel");
       const page = parseInt(url.searchParams.get("page") || "1");
       const limit = parseInt(url.searchParams.get("limit") || "100");
-    
+
       if (!channel) {
         return new Response("Missing parameters", { status: 400 });
       }
-    
+
       // Calculate offset based on the page and limit
       const offset = (page - 1) * limit;
-    
+
       // Get paginated visits, including username and online status
       const query = `
         SELECT v.*, u.name, u.online
@@ -669,9 +690,9 @@ const server = Bun.serve({
         ORDER BY v.timestamp DESC
         LIMIT ? OFFSET ?;
       `;
-    
+
       const results = db.query(query).all(channel, limit, offset);
-    
+
       console.log('Got Results', results.length);
       return new Response(JSON.stringify(results), {
         headers: {
@@ -682,7 +703,7 @@ const server = Bun.serve({
         },
       });
     }
-    
+
 
     if (url.pathname === "/api/addChannels") {
       if (req.method === "OPTIONS") {
@@ -711,10 +732,10 @@ const server = Bun.serve({
             },
           });
         }
-        
+
         // Filter out empty, null, or whitespace-only channel names
         channels = channels.filter((ch: any) => isValidChannelName(ch));
-        
+
         if (channels.length === 0) {
           return new Response("All channel names are invalid (empty or whitespace)", {
             status: 400,
@@ -726,7 +747,7 @@ const server = Bun.serve({
             },
           });
         }
-        
+
         if (pin != 4756) {
           return new Response("Incorrect Auth Pin", {
             status: 401,
@@ -739,10 +760,11 @@ const server = Bun.serve({
           });
         }
 
-        // 1. Read the existing data from the JSON file
-        const data = await fs.readFileSync("channels.json", "utf8");
+        // 1. Read the existing data from the JSON file - async for non-blocking I/O
+        const channelsFile = Bun.file("channels.json");
+        const data = await channelsFile.text();
         let existingStrings = JSON.parse(data);
-        
+
         // Clean existing strings - remove any empty/invalid entries
         existingStrings = existingStrings.filter((ch: any) => isValidChannelName(ch));
 
@@ -754,12 +776,12 @@ const server = Bun.serve({
         // 3. Add the unique strings to the existing array
         const updatedStrings = [...existingStrings, ...uniqueNewStrings];
 
-        // 4. Write the updated array back to the JSON file
-        await fs.writeFileSync(
+        // 4. Write the updated array back to the JSON file - async write
+        await Bun.write(
           "channels.json",
           JSON.stringify(updatedStrings, null, 2)
         );
-        
+
         console.log(`[${new Date().toISOString()}] ✅ Added ${uniqueNewStrings.length} new channels, cleaned ${channels.length - uniqueNewStrings.length} duplicates`);
 
         return new Response(JSON.stringify({ channels: uniqueNewStrings, added: uniqueNewStrings.length }), {
@@ -810,8 +832,9 @@ const server = Bun.serve({
           });
         }
 
-        // 1. Read the existing data from the JSON file
-        const data = await fs.readFileSync("channels.json", "utf8");
+        // 1. Read the existing data from the JSON file - async for non-blocking I/O
+        const channelsFile = Bun.file("channels.json");
+        const data = await channelsFile.text();
         const existingStrings = JSON.parse(data);
 
         // remove the strings from the existing array
@@ -819,8 +842,8 @@ const server = Bun.serve({
           (existingString: any) => !channels.includes(existingString)
         );
 
-        // 4. Write the updated array back to the JSON file
-        await fs.writeFileSync(
+        // 4. Write the updated array back to the JSON file - async write
+        await Bun.write(
           "channels.json",
           JSON.stringify(updatedStrings, null, 2)
         );
@@ -835,7 +858,7 @@ const server = Bun.serve({
         });
       }
     }
-    
+
     if (url.pathname === "/api/cleanChannels") {
       // Endpoint to clean up invalid channels from channels.json
       if (req.method === "OPTIONS") {
@@ -847,12 +870,12 @@ const server = Bun.serve({
           },
         });
       }
-      
+
       if (req.method === "POST") {
         try {
           const body = (await req.json()) as any;
           const pin = body.pin;
-          
+
           if (pin != 4756) {
             return new Response("Incorrect Auth Pin", {
               status: 401,
@@ -864,31 +887,33 @@ const server = Bun.serve({
               },
             });
           }
-          
+
           console.log(`[${new Date().toISOString()}] [${requestId}] 🧹 Cleaning channels.json...`);
-          
-          const data = fs.readFileSync("channels.json", "utf8");
+
+          // Async file read for non-blocking I/O
+          const channelsFile = Bun.file("channels.json");
+          const data = await channelsFile.text();
           let channels = JSON.parse(data);
           const originalCount = channels.length;
-          
+
           // Filter out invalid channel names
           channels = channels.filter((ch: any) => isValidChannelName(ch));
-          
+
           const removedCount = originalCount - channels.length;
-          
-          // Write cleaned channels back
-          fs.writeFileSync(
+
+          // Write cleaned channels back - async write
+          await Bun.write(
             "channels.json",
             JSON.stringify(channels, null, 2)
           );
-          
+
           console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Cleaned ${removedCount} invalid channels`);
-          
-          return new Response(JSON.stringify({ 
+
+          return new Response(JSON.stringify({
             original: originalCount,
             cleaned: channels.length,
             removed: removedCount,
-            channels 
+            channels
           }), {
             headers: {
               "Content-Type": "application/json",
@@ -911,14 +936,17 @@ const server = Bun.serve({
         }
       }
     }
-    
+
     if (url.pathname === "/api/getChannels") {
       try {
         console.log(`[${new Date().toISOString()}] [${requestId}] 📖 Reading channels.json...`);
         const fileReadStart = Date.now();
-        
-        // Check if file exists first
-        if (!fs.existsSync("channels.json")) {
+
+        // Use Bun.file() for async, non-blocking file check and read
+        const channelsFile = Bun.file("channels.json");
+        const fileExists = await channelsFile.exists();
+
+        if (!fileExists) {
           const err = `channels.json not found in ${process.cwd()}`;
           console.error(`[${new Date().toISOString()}] [${requestId}] ❌ ${err}`);
           return new Response(JSON.stringify({ error: err }), {
@@ -931,24 +959,24 @@ const server = Bun.serve({
             },
           });
         }
-        
-        const data = fs.readFileSync("channels.json", "utf8");
+
+        const data = await channelsFile.text();
         const fileReadElapsed = Date.now() - fileReadStart;
         console.log(`[${new Date().toISOString()}] [${requestId}] File read in ${fileReadElapsed}ms`);
-        
+
         let channels = JSON.parse(data);
         const originalCount = channels.length;
-        
+
         // Filter out invalid channel names (empty, null, or whitespace-only)
         channels = channels.filter((ch: any) => isValidChannelName(ch));
-        
+
         if (channels.length !== originalCount) {
           console.warn(`[${new Date().toISOString()}] [${requestId}] ⚠️  Filtered out ${originalCount - channels.length} invalid channels`);
         }
-        
+
         const totalElapsed = Date.now() - requestStart;
         console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Success: ${channels.length} valid channels, total ${totalElapsed}ms`);
-        
+
         return new Response(JSON.stringify({ channels }), {
           headers: {
             "Content-Type": "application/json",
@@ -985,39 +1013,40 @@ setInterval(async () => {
     console.warn(`[${new Date().toISOString()}] ⚠️  Skipping periodic fetch - previous fetch still in progress`);
     return;
   }
-  
+
   isFetchingUsers = true;
   try {
     console.log(`[${new Date().toISOString()}] 🔄 Starting periodic user fetch...`);
     const startTime = Date.now();
-    
-    // get channel from channels.json
+
+    // get channel from channels.json - use async Bun.file() for non-blocking I/O
+    const channelsFile = Bun.file("channels.json");
     let channels = JSON.parse(
-      fs.readFileSync("channels.json", "utf8")
+      await channelsFile.text()
     ) as string[];
-    
+
     const originalCount = channels.length;
-    
+
     // Filter out invalid channel names (empty, null, or whitespace-only)
     channels = channels.filter((ch: any) => isValidChannelName(ch));
-    
+
     if (channels.length !== originalCount) {
       console.warn(`[${new Date().toISOString()}] ⚠️  Filtered out ${originalCount - channels.length} invalid channels from periodic fetch`);
     }
-    
+
     console.log(`[${new Date().toISOString()}] 📋 Found ${channels.length} valid channels to process`);
-    
+
     // Process channels in parallel with a maximum of 5 concurrent requests
     const batchSize = 5;
     for (let i = 0; i < channels.length; i += batchSize) {
       const batch = channels.slice(i, i + batchSize);
-      console.log(`[${new Date().toISOString()}] Processing batch ${Math.floor(i/batchSize) + 1} (${batch.length} channels)`);
+      console.log(`[${new Date().toISOString()}] Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} channels)`);
       await Promise.all(batch.map(channel => fetchAndLogUsers(channel)));
     }
-    
+
     updateOnlineStatus(activeUserIds);
-    activeUserIds = [];
-    
+    activeUserIds.clear();  // Use Set.clear() for proper cleanup
+
     const elapsed = Date.now() - startTime;
     console.log(`[${new Date().toISOString()}] ✅ Completed periodic user fetch in ${elapsed}ms`);
   } catch (error: any) {
@@ -1025,7 +1054,7 @@ setInterval(async () => {
   } finally {
     isFetchingUsers = false;
   }
-}, 20000);
+}, 120000);  // 2 minutes (was 20 seconds) - reduces CPU by 6x
 
 console.log(`[${new Date().toISOString()}] 🚀 Server starting...`);
 console.log(`Listening on http://localhost:3008 ...`);
