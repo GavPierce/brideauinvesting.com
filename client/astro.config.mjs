@@ -10,8 +10,7 @@ export default defineConfig({
 	site: process.env.CI
 		? 'https://themesberg.github.io'
 		: `http://localhost:${DEV_PORT}`,
-	base: process.env.CI ? '/flowbite-astro-admin-dashboard' : undefined,
-
+	base: '/',
 	// output: 'server',
 
 	/* Like Vercel, Netlify,… Mimicking for dev. server */
