@@ -7,40 +7,40 @@ import { animate } from 'motion';
 const skeletonsByList = new Map<HTMLElement, HTMLElement[]>();
 
 function showSkeletons(listEl: HTMLElement, count: number) {
-    // Clear any existing skeletons for this list
-    clearSkeletons(listEl);
-    const batch: HTMLElement[] = [];
-    for (let i = 0; i < count; i++) {
-        const sk = document.createElement('li');
-        sk.className = 'py-2 sm:py-2';
-        sk.innerHTML = `
+	// Clear any existing skeletons for this list
+	clearSkeletons(listEl);
+	const batch: HTMLElement[] = [];
+	for (let i = 0; i < count; i++) {
+		const sk = document.createElement('li');
+		sk.className = 'py-2 sm:py-2';
+		sk.innerHTML = `
             <div class="flex items-center justify-between">
                 <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
                 <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
             </div>`;
-        listEl.appendChild(sk);
-        batch.push(sk);
-        animate(sk, { opacity: [0.4, 1] }, { duration: 1, direction: 'alternate', repeat: Infinity });
-    }
-    skeletonsByList.set(listEl, batch);
+		listEl.appendChild(sk);
+		batch.push(sk);
+		animate(sk, { opacity: [0.4, 1] }, { duration: 1, direction: 'alternate', repeat: Infinity });
+	}
+	skeletonsByList.set(listEl, batch);
 }
 
 function clearSkeletons(listEl?: HTMLElement) {
-    if (listEl) {
-        const batch = skeletonsByList.get(listEl) || [];
-        batch.forEach((el) => el.remove());
-        skeletonsByList.delete(listEl);
-        return;
-    }
-    // Fallback: clear all
-    skeletonsByList.forEach((batch, key) => {
-        batch.forEach((el) => el.remove());
-    });
-    skeletonsByList.clear();
+	if (listEl) {
+		const batch = skeletonsByList.get(listEl) || [];
+		batch.forEach((el) => el.remove());
+		skeletonsByList.delete(listEl);
+		return;
+	}
+	// Fallback: clear all
+	skeletonsByList.forEach((batch, key) => {
+		batch.forEach((el) => el.remove());
+	});
+	skeletonsByList.clear();
 }
 
 let responseData = await fetch('https://api.brideauinvesting.com/api/getChannels');
-let channelObject = await responseData.json() as {channels: string[]};
+let channelObject = await responseData.json() as { channels: string[] };
 let channels = channelObject.channels as string[];
 
 // sort channels alphabetically
@@ -153,7 +153,7 @@ function formatToLocalMonthDay(timestamp: string) {
 // 			earliestDate -= 24 * 60 * 60 * 1000;
 // 			dataArray.unshift(0);
 // 		}
-		
+
 // 		return {
 // 			name: channel,
 // 			data: dataArray, // Extract visit count for each day
@@ -319,43 +319,110 @@ function formatTime(timestamp: string) {
 	return time.toLocaleString('en-US', options);
 }
 
-	// Shared renderer to load and display a user's visits by precise identifier
-	async function renderUserVisitsByQuery(query: { public_id?: string; userId?: number; name?: string }) {
-		const userList = document.getElementById('user-list');
-		while (userList?.firstChild) {
-			userList.removeChild(userList.firstChild);
+// Shared renderer to load and display a user's visits by precise identifier
+async function renderUserVisitsByQuery(query: { public_id?: string; userId?: number; name?: string }) {
+	const userList = document.getElementById('user-list');
+	if (!userList) return;
+
+	// Clear existing content
+	while (userList.firstChild) {
+		userList.removeChild(userList.firstChild);
+	}
+
+	// Show loading skeletons
+	showSkeletons(userList as HTMLElement, 5);
+
+	let url = 'https://api.brideauinvesting.com/api/visitsByUser';
+	if (query.public_id) {
+		url += `?public_id=${encodeURIComponent(query.public_id)}`;
+	} else if (typeof query.userId === 'number') {
+		url += `?userId=${query.userId}`;
+	} else if (query.name) {
+		url += `?user=@${encodeURIComponent(query.name)}`;
+	}
+
+	try {
+		// Add timeout to detect hung requests
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+		const response = await fetch(url, { signal: controller.signal });
+		clearTimeout(timeoutId);
+
+		if (!response.ok) {
+			throw new Error(`Server returned ${response.status}`);
 		}
 
-		let url = 'https://api.brideauinvesting.com/api/visitsByUser';
-		if (query.public_id) {
-			url += `?public_id=${encodeURIComponent(query.public_id)}`;
-		} else if (typeof query.userId === 'number') {
-			url += `?userId=${query.userId}`;
-		} else if (query.name) {
-			url += `?user=@${encodeURIComponent(query.name)}`;
-		}
-
-		const response = await fetch(url);
 		const data = await response.json();
+
+		// Clear skeletons
+		clearSkeletons(userList as HTMLElement);
+
+		// Handle empty results
+		if (!data || data.length === 0) {
+			const emptyLi = document.createElement('li');
+			emptyLi.classList.add('py-4', 'text-center', 'text-gray-500', 'dark:text-gray-400');
+			emptyLi.innerHTML = `
+					<svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+					<p>No visits found for this user</p>
+				`;
+			userList.appendChild(emptyLi);
+			return;
+		}
 
 		data.forEach((visit: any) => {
 			let li = document.createElement('li');
 			li.classList.add('py-3', 'sm:py-4');
 			li.innerHTML = `
-							<div class="flex items-center space-x-4">
-								<div class="flex-1 min-w-0">
-									<p class="font-medium text-gray-900 truncate dark:text-white">
-										${formatTime(visit.timestamp)}
-									</p>
+								<div class="flex items-center space-x-4">
+									<div class="flex-1 min-w-0">
+										<p class="font-medium text-gray-900 truncate dark:text-white">
+											${formatTime(visit.timestamp)}
+										</p>
+									</div>
+									<div class="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
+										${visit.channel_name}
+									</div>
 								</div>
-								<div class="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
-									${visit.channel_name}
-								</div>
-							</div>
-			`;
-			userList?.appendChild(li);
+				`;
+			userList.appendChild(li);
 		});
+	} catch (error: any) {
+		// Clear skeletons on error
+		clearSkeletons(userList as HTMLElement);
+
+		const errorLi = document.createElement('li');
+		errorLi.classList.add('py-4', 'text-center');
+
+		if (error.name === 'AbortError') {
+			// Timeout error
+			errorLi.innerHTML = `
+					<div class="text-yellow-500 dark:text-yellow-400">
+						<svg class="mx-auto h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<p class="font-medium">Request timed out</p>
+						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">The server is taking too long to respond. Please try again.</p>
+					</div>
+				`;
+		} else {
+			// General error
+			errorLi.innerHTML = `
+					<div class="text-red-500 dark:text-red-400">
+						<svg class="mx-auto h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+						</svg>
+						<p class="font-medium">Failed to load visits</p>
+						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${error.message || 'Please try again later.'}</p>
+					</div>
+				`;
+		}
+
+		userList.appendChild(errorLi);
 	}
+}
 if (document.getElementById('channel-tabs1')) {
 	// Track current page and limit
 	let currentPage = 1;
@@ -364,8 +431,8 @@ if (document.getElementById('channel-tabs1')) {
 
 	// Add options for each channel
 	const select = document.getElementById('channel-tabs1') as HTMLSelectElement;
-    const channelList = document.getElementById('visits-list');
-    const visitsContainer = document.getElementById('visits'); // container with scroll
+	const channelList = document.getElementById('visits-list');
+	const visitsContainer = document.getElementById('visits'); // container with scroll
 
 	channels.forEach((channel) => {
 		const option = document.createElement('option');
@@ -381,14 +448,14 @@ if (document.getElementById('channel-tabs1')) {
 		return await response.json();
 	}
 
-    async function loadVisits(channel: string, page: number) {
-        loading = true;
-        if (channelList) showSkeletons(channelList as HTMLElement, 6);
-        const data = await fetchVisits(channel, page);
-        clearSkeletons(channelList as HTMLElement);
+	async function loadVisits(channel: string, page: number) {
+		loading = true;
+		if (channelList) showSkeletons(channelList as HTMLElement, 6);
+		const data = await fetchVisits(channel, page);
+		clearSkeletons(channelList as HTMLElement);
 
-        // Append the data to the list
-        data.forEach((visit: any) => {
+		// Append the data to the list
+		data.forEach((visit: any) => {
 			const li = document.createElement('li');
 			li.classList.add('py-1', 'sm:py-1');
 
@@ -400,9 +467,8 @@ if (document.getElementById('channel-tabs1')) {
 								<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
 									${visit.name}
 								</p>
-								<div class="flex items-center justify-end flex-1 text-sm ${
-									visit.online ? 'text-green-500' : 'text-red-500'
-								}">
+								<div class="flex items-center justify-end flex-1 text-sm ${visit.online ? 'text-green-500' : 'text-red-500'
+				}">
 									<span>${formatTime(visit.timestamp)}</span>
 									<span class="mx-1">|</span>
 									<span>${visit.online ? 'Online' : 'Offline'}</span>
@@ -438,7 +504,7 @@ if (document.getElementById('channel-tabs1')) {
 				await renderUserVisitsByQuery({ userId: Number(userIdAttr) });
 			});
 
-            channelList?.appendChild(li);
+			channelList?.appendChild(li);
 		});
 
 		loading = false;
@@ -462,7 +528,7 @@ if (document.getElementById('channel-tabs1')) {
 	// Reload data when a new channel is selected
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
-        channelList!.innerHTML = '';
+		channelList!.innerHTML = '';
 
 		// Reset pagination and load new data
 		currentPage = 1;
@@ -474,7 +540,7 @@ if (document.getElementById('channel-tabs1')) {
 if (document.getElementById('channel-tabs2')) {
 	// Add options for each channel
 	const select = document.getElementById('channel-tabs2') as HTMLSelectElement;
-    const channelList = document.getElementById('channel-list');
+	const channelList = document.getElementById('channel-list');
 	const faqContainer = document.getElementById('faq'); // container with scroll
 
 	channels.forEach((channel) => {
@@ -492,13 +558,13 @@ if (document.getElementById('channel-tabs2')) {
 	}
 
 	// Load visits into the list
-    async function loadVisits(channel: string) {
-        if (channelList) showSkeletons(channelList as HTMLElement, 6);
-        const data = await fetchVisits(channel);
-        clearSkeletons(channelList as HTMLElement);
+	async function loadVisits(channel: string) {
+		if (channelList) showSkeletons(channelList as HTMLElement, 6);
+		const data = await fetchVisits(channel);
+		clearSkeletons(channelList as HTMLElement);
 
-        // Add the data to the list
-        data.forEach((visit: any) => {
+		// Add the data to the list
+		data.forEach((visit: any) => {
 			const li = document.createElement('li');
 			li.classList.add('py-1', 'sm:py-2');
 
@@ -510,9 +576,8 @@ if (document.getElementById('channel-tabs2')) {
 								<p class="mr-4 font-small text-gray-900 truncate dark:text-white" id="name">
 									${visit.name}
 								</p>
-								<div class="flex items-center justify-end flex-1 text-sm ${
-									visit.online ? 'text-green-500' : 'text-red-500'
-								}">
+								<div class="flex items-center justify-end flex-1 text-sm ${visit.online ? 'text-green-500' : 'text-red-500'
+				}">
 									<span>${formatTime(visit.last_visit)}</span>
 									<span class="mx-1">|</span>
 									<span>${visit.online ? 'Online' : 'Offline'}</span>
@@ -548,7 +613,7 @@ if (document.getElementById('channel-tabs2')) {
 				await renderUserVisitsByQuery({ public_id: publicId });
 			});
 
-            channelList?.appendChild(li);
+			channelList?.appendChild(li);
 		});
 	}
 
@@ -559,7 +624,7 @@ if (document.getElementById('channel-tabs2')) {
 	// Reload data when a new channel is selected
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
-        channelList!.innerHTML = ''; // Clear previous list
+		channelList!.innerHTML = ''; // Clear previous list
 		await loadVisits(selectedChannel);
 	});
 
@@ -579,15 +644,15 @@ if (document.getElementById('channel-tabs2')) {
 
 if (document.getElementById('user-input')) {
 	let userInput = document.getElementById('user-input') as HTMLInputElement;
-    let userList = document.getElementById('user-list');
+	let userList = document.getElementById('user-list');
 
 	userInput.addEventListener('keydown', async (event: any) => {
 		// if its enter
 		if (event.key === 'Enter') {
 			let user = (event.target as HTMLInputElement).value;
 			let userInfo = document.getElementById('user-info') as HTMLElement;
-            userInfo.innerHTML = ``;
-            if (userList) showSkeletons(userList as HTMLElement, 4);
+			userInfo.innerHTML = ``;
+			if (userList) showSkeletons(userList as HTMLElement, 4);
 
 			// Check online status across all matching handles (names are not unique)
 			let userData = await fetch(
@@ -608,8 +673,8 @@ if (document.getElementById('user-input')) {
 				userInfo.classList.remove('text-green-500');
 			}
 
-            await renderUserVisitsByQuery({ name: user });
-            clearSkeletons(userList as HTMLElement);
+			await renderUserVisitsByQuery({ name: user });
+			clearSkeletons(userList as HTMLElement);
 		}
 	});
 }
