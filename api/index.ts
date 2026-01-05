@@ -164,13 +164,10 @@ async function fetchAndLogUsers(channelName: string) {
 
   // Validate channel name before processing
   if (!isValidChannelName(channelName)) {
-    console.error(`[${new Date().toISOString()}] ❌ Invalid channel name: "${channelName}" - skipping`);
-    return;
+    return; // Silently skip invalid channels
   }
 
   try {
-    console.log(`[${new Date().toISOString()}] 🔍 Fetching users for channel: ${channelName}`);
-
     // Add timeout to prevent hanging
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
@@ -182,25 +179,18 @@ async function fetchAndLogUsers(channelName: string) {
 
     clearTimeout(timeoutId);
 
-    const elapsed = Date.now() - startTime;
-    console.log(`[${new Date().toISOString()}] ⏱️  Fetch completed for ${channelName} in ${elapsed}ms, status: ${response.status}`);
-
     if (!response.ok) {
-      console.error(`[${new Date().toISOString()}] ❌ Failed to fetch online users for ${channelName}: ${response.status} ${response.statusText}`);
+      console.error(`[${new Date().toISOString()}] ❌ Failed: ${channelName} (${response.status})`);
       return;
     }
 
     const data = (await response.json()) as any;
     const timestamp = new Date().toISOString();
 
-    // Log visits for all active users
-
     if (!data?.users) {
-      console.log(`[${new Date().toISOString()}] No users data for channel: ${channelName}`);
       return;
     }
 
-    console.log(`[${new Date().toISOString()}] Found ${data.users.length} users for channel: ${channelName}`);
     data?.users.forEach((user: any) => {
       const user_id = getOrCreateUserId(user.public_id, user.name || "Unknown");
       const channel_id = getOrCreateChannelId(channelName);
@@ -211,11 +201,10 @@ async function fetchAndLogUsers(channelName: string) {
       }
     });
   } catch (error: any) {
-    const elapsed = Date.now() - startTime;
     if (error.name === 'AbortError') {
-      console.error(`[${new Date().toISOString()}] ⏰ Timeout fetching users for ${channelName} after ${elapsed}ms`);
+      console.error(`[${new Date().toISOString()}] ⏰ Timeout: ${channelName}`);
     } else {
-      console.error(`[${new Date().toISOString()}] ❌ Error fetching users for ${channelName} after ${elapsed}ms:`, error.message, '\nStack:', error.stack);
+      console.error(`[${new Date().toISOString()}] ❌ Error: ${channelName} - ${error.message}`);
     }
   }
 }
@@ -1008,6 +997,9 @@ const server = Bun.serve({
 // Prevent overlapping executions
 let isFetchingUsers = false;
 
+// Helper to sleep between batches (reduces CPU pressure)
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 setInterval(async () => {
   if (isFetchingUsers) {
     console.warn(`[${new Date().toISOString()}] ⚠️  Skipping periodic fetch - previous fetch still in progress`);
@@ -1034,14 +1026,28 @@ setInterval(async () => {
       console.warn(`[${new Date().toISOString()}] ⚠️  Filtered out ${originalCount - channels.length} invalid channels from periodic fetch`);
     }
 
-    console.log(`[${new Date().toISOString()}] 📋 Found ${channels.length} valid channels to process`);
+    console.log(`[${new Date().toISOString()}] 📋 Processing ${channels.length} channels...`);
 
-    // Process channels in parallel with a maximum of 5 concurrent requests
-    const batchSize = 5;
+    // Process channels in smaller batches with delays to reduce CPU pressure
+    const batchSize = 3;  // Reduced from 5 for less CPU spike
+    const batchDelayMs = 2000;  // 2 second delay between batches
+
     for (let i = 0; i < channels.length; i += batchSize) {
       const batch = channels.slice(i, i + batchSize);
-      console.log(`[${new Date().toISOString()}] Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} channels)`);
+      const batchNum = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(channels.length / batchSize);
+
+      // Only log every 5th batch to reduce console spam
+      if (batchNum % 5 === 1 || batchNum === totalBatches) {
+        console.log(`[${new Date().toISOString()}] Processing batch ${batchNum}/${totalBatches}`);
+      }
+
       await Promise.all(batch.map(channel => fetchAndLogUsers(channel)));
+
+      // Add delay between batches to prevent CPU saturation
+      if (i + batchSize < channels.length) {
+        await sleep(batchDelayMs);
+      }
     }
 
     updateOnlineStatus(activeUserIds);
@@ -1054,7 +1060,7 @@ setInterval(async () => {
   } finally {
     isFetchingUsers = false;
   }
-}, 120000);  // 2 minutes (was 20 seconds) - reduces CPU by 6x
+}, 300000);  // 5 minutes - gives more breathing room between cycles
 
 console.log(`[${new Date().toISOString()}] 🚀 Server starting...`);
 console.log(`Listening on http://localhost:3008 ...`);
