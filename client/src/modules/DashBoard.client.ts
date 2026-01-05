@@ -39,7 +39,7 @@ function clearSkeletons(listEl?: HTMLElement) {
 	skeletonsByList.clear();
 }
 
-let responseData = await fetch('https://api.brideauinvesting.com/api/getChannels');
+let responseData = await fetch('https://api.epmarketingandresearch.com/api/getChannels');
 let channelObject = await responseData.json() as { channels: string[] };
 let channels = channelObject.channels as string[];
 
@@ -94,7 +94,7 @@ function formatToLocalMonthDay(timestamp: string) {
 // const chartData = await Promise.all(
 // 	channels.map(async (channel) => {
 // 		const response = await fetch(
-// 			`https://api.brideauinvesting.com/api/visits/daily/lastSevenDays?channel=${channel}`,
+// 			`https://api.epmarketingandresearch.com/api/visits/daily/lastSevenDays?channel=${channel}`,
 // 		);
 // 		// Adjust the date range
 // 		const data = await response.json();
@@ -332,7 +332,7 @@ async function renderUserVisitsByQuery(query: { public_id?: string; userId?: num
 	// Show loading skeletons
 	showSkeletons(userList as HTMLElement, 5);
 
-	let url = 'https://api.brideauinvesting.com/api/visitsByUser';
+	let url = 'https://api.epmarketingandresearch.com/api/visitsByUser';
 	if (query.public_id) {
 		url += `?public_id=${encodeURIComponent(query.public_id)}`;
 	} else if (typeof query.userId === 'number') {
@@ -443,7 +443,7 @@ if (document.getElementById('channel-tabs1')) {
 
 	async function fetchVisits(channel: string, page: number) {
 		const response = await fetch(
-			`https://api.brideauinvesting.com/api/visitsByChannel?channel=${channel}&limit=${limit}&page=${page}`
+			`https://api.epmarketingandresearch.com/api/visitsByChannel?channel=${channel}&limit=${limit}&page=${page}`
 		);
 		return await response.json();
 	}
@@ -552,7 +552,7 @@ if (document.getElementById('channel-tabs2')) {
 
 	// Fetch data function
 	async function fetchVisits(channel: string) {
-		const response = await fetch(`https://api.brideauinvesting.com/api/usersByChannel?channel=${channel}`);
+		const response = await fetch(`https://api.epmarketingandresearch.com/api/usersByChannel?channel=${channel}`);
 		const data = await response.json();
 		return data.slice(0, 500); // Limit to top 500
 	}
@@ -656,7 +656,7 @@ if (document.getElementById('user-input')) {
 
 			// Check online status across all matching handles (names are not unique)
 			let userData = await fetch(
-				`https://api.brideauinvesting.com/api/user/getByName?name=@${user}`,
+				`https://api.epmarketingandresearch.com/api/user/getByName?name=@${user}`,
 			);
 
 			let userDataJson = await userData.json();
