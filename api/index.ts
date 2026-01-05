@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import fs from "fs";
 
 // Initialize in-memory SQLite database (you can replace ":memory:" with a file path for persistent storage)
-const db = new Database("database.db");
+const db = new Database("./data/database.db");
 
 // Initialize tables
 db.run(`
