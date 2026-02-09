@@ -1,5 +1,4 @@
 import { Database } from "bun:sqlite";
-import fs from "fs";
 
 // Initialize in-memory SQLite database (you can replace ":memory:" with a file path for persistent storage)
 const db = new Database("./data/database.db");
@@ -32,6 +31,13 @@ CREATE TABLE IF NOT EXISTS visits (
 );
 `);
 
+// Performance indexes for hot query paths
+db.run(`CREATE INDEX IF NOT EXISTS idx_visits_user_channel_ts ON visits(user_id, channel_id, timestamp DESC)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_visits_channel_id ON visits(channel_id)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_visits_timestamp ON visits(timestamp)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name)`);
+
 type visit = {
   user_id: number;
   channel_id: number;
@@ -45,27 +51,41 @@ type user = {
   online: boolean;
 };
 
+// Prepared statements — compiled once, reused every call
+const stmtInsertChannel = db.query(`INSERT OR IGNORE INTO channels (name) VALUES (?)`);
+const stmtSelectChannel = db.query<any, any>(`SELECT id FROM channels WHERE name = ?`);
+const stmtInsertUser = db.query(`INSERT OR IGNORE INTO users (public_id, name, online) VALUES (?, ?, false)`);
+const stmtSelectUser = db.query<any, any>(`SELECT id FROM users WHERE public_id = ?`);
+const stmtLastVisit = db.query<any, any>(`SELECT timestamp FROM visits WHERE user_id = ? AND channel_id = ? ORDER BY timestamp DESC LIMIT 1`);
+const stmtInsertVisit = db.query(`INSERT INTO visits (user_id, channel_id, timestamp) VALUES (?, ?, ?)`);
+const stmtMarkOnline = db.query(`UPDATE users SET online = true WHERE id = ?`);
+
+// In-memory caches to avoid repeated DB lookups (cleared each scrape cycle)
+const channelIdCache = new Map<string, number>();
+const userIdCache = new Map<string, number>();
+
 // Function to insert or get a channel ID
 function getOrCreateChannelId(channelName: string): number {
-  db.run(`INSERT OR IGNORE INTO channels (name) VALUES (?)`, [channelName]);
+  const cached = channelIdCache.get(channelName);
+  if (cached !== undefined) return cached;
 
-  const channel = db
-    .query<any, any>(`SELECT id FROM channels WHERE name = ?`)
-    .get(channelName);
-  return channel?.id ?? -1;
+  stmtInsertChannel.run(channelName);
+  const channel = stmtSelectChannel.get(channelName);
+  const id = channel?.id ?? -1;
+  if (id !== -1) channelIdCache.set(channelName, id);
+  return id;
 }
 
 // Function to insert or get a user ID
 function getOrCreateUserId(public_id: string, name: string): number {
-  db.run(
-    `INSERT OR IGNORE INTO users (public_id, name, online) VALUES (?, ?, false)`,
-    [public_id, name]
-  );
+  const cached = userIdCache.get(public_id);
+  if (cached !== undefined) return cached;
 
-  const user = db
-    .query<any, any>(`SELECT id FROM users WHERE public_id = ?`)
-    .get(public_id);
-  return user?.id ?? -1;
+  stmtInsertUser.run(public_id, name);
+  const user = stmtSelectUser.get(public_id);
+  const id = user?.id ?? -1;
+  if (id !== -1) userIdCache.set(public_id, id);
+  return id;
 }
 
 // Function to log a visit and mark user as online
@@ -75,17 +95,7 @@ function logVisit(
   timestamp: string
 ): void {
   // Get the last visit for this user in this channel
-  const lastVisit: visit = db
-    .query(
-      `
-    SELECT timestamp 
-    FROM visits 
-    WHERE user_id = ? AND channel_id = ? 
-    ORDER BY timestamp DESC 
-    LIMIT 1
-  `
-    )
-    .get(user_id, channel_id) as visit;
+  const lastVisit: visit = stmtLastVisit.get(user_id, channel_id) as visit;
 
   // Convert timestamps to Date objects for comparison
   const lastVisitDate = lastVisit ? new Date(lastVisit.timestamp) : null;
@@ -103,42 +113,45 @@ function logVisit(
   }
   // Only log a new visit if the last visit was more than the threshold ago
   if (shouldLogVisit) {
-    db.run(
-      `INSERT INTO visits (user_id, channel_id, timestamp) VALUES (?, ?, ?)`,
-      [user_id, channel_id, timestamp]
-    );
+    stmtInsertVisit.run(user_id, channel_id, timestamp);
   } else {
   }
 
   // Mark the user as online
-  db.run(`UPDATE users SET online = true WHERE id = ?`, [user_id]);
+  stmtMarkOnline.run(user_id);
 }
 
 // Function to mark users as offline if they were previously online but are not in the current list of users
+// Uses a temp table to avoid building queries with thousands of placeholders
+db.run(`CREATE TEMP TABLE IF NOT EXISTS _active_ids (user_id INTEGER PRIMARY KEY)`);
+const stmtInsertActiveId = db.query(`INSERT INTO _active_ids (user_id) VALUES (?)`);
+
 function updateOnlineStatus(activeUserIds: Set<number> | number[]): void {
   const userIdArray = Array.isArray(activeUserIds) ? activeUserIds : Array.from(activeUserIds);
+
+  // Populate the temp table with the active user IDs
+  db.run(`DELETE FROM _active_ids`);
+
   if (userIdArray.length > 0) {
+    for (const id of userIdArray) {
+      stmtInsertActiveId.run(id);
+    }
+
     // Set users with IDs in `activeUserIds` as online
-    db.run(
-      `
+    db.run(`
       UPDATE users 
       SET online = true
-      WHERE id IN (${userIdArray.map(() => "?").join(",")})
+      WHERE id IN (SELECT user_id FROM _active_ids)
       AND online = false
-      `,
-      userIdArray
-    );
+    `);
 
     // Set users as offline who are not in `activeUserIds` but are currently online
-    db.run(
-      `
+    db.run(`
       UPDATE users 
       SET online = false 
-      WHERE id NOT IN (${userIdArray.map(() => "?").join(",")})
+      WHERE id NOT IN (SELECT user_id FROM _active_ids)
       AND online = true
-      `,
-      userIdArray
-    );
+    `);
   } else {
     // If no active users, set all online users as offline
     db.run(`
@@ -147,6 +160,9 @@ function updateOnlineStatus(activeUserIds: Set<number> | number[]): void {
       WHERE online = true
     `);
   }
+
+  // Clean up temp table
+  db.run(`DELETE FROM _active_ids`);
 }
 
 // Helper function to validate channel names
@@ -159,12 +175,10 @@ function isValidChannelName(channel: any): boolean {
 let activeUserIds: Set<number> = new Set();
 const MAX_ACTIVE_USERS = 10000; // Prevent unbounded memory growth
 
-async function fetchAndLogUsers(channelName: string) {
-  const startTime = Date.now();
-
+async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boolean }> {
   // Validate channel name before processing
   if (!isValidChannelName(channelName)) {
-    return; // Silently skip invalid channels
+    return { rateLimited: false }; // Silently skip invalid channels
   }
 
   try {
@@ -173,33 +187,41 @@ async function fetchAndLogUsers(channelName: string) {
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
     const response = await fetch(
-      `https://api.ceo.ca/api/channels/online_users?channel=${channelName}`,
+      `https://new-api.ceo.ca/api/channels/online_users?channel=${encodeURIComponent(channelName)}`,
       { signal: controller.signal }
     );
 
     clearTimeout(timeoutId);
 
+    if (response.status === 429) {
+      console.warn(`[${new Date().toISOString()}] ⚠️  Rate limited on: ${channelName}`);
+      return { rateLimited: true };
+    }
+
     if (!response.ok) {
       console.error(`[${new Date().toISOString()}] ❌ Failed: ${channelName} (${response.status})`);
-      return;
+      return { rateLimited: false };
     }
 
     const data = (await response.json()) as any;
-    const timestamp = new Date().toISOString();
 
-    if (!data?.users) {
-      return;
+    // Skip channels with no online users — saves all DB work
+    if (!data?.users || data.num_online === 0) {
+      return { rateLimited: false };
     }
 
-    data?.users.forEach((user: any) => {
+    const timestamp = new Date().toISOString();
+    // Hoist channel ID lookup outside the per-user loop (same for every user)
+    const channel_id = getOrCreateChannelId(channelName);
+
+    for (const user of data.users) {
       const user_id = getOrCreateUserId(user.public_id, user.name || "Unknown");
-      const channel_id = getOrCreateChannelId(channelName);
       logVisit(user_id, channel_id, timestamp);
       // Add to Set with size limit to prevent memory leaks
       if (activeUserIds.size < MAX_ACTIVE_USERS) {
         activeUserIds.add(user_id);
       }
-    });
+    }
   } catch (error: any) {
     if (error.name === 'AbortError') {
       console.error(`[${new Date().toISOString()}] ⏰ Timeout: ${channelName}`);
@@ -207,6 +229,7 @@ async function fetchAndLogUsers(channelName: string) {
       console.error(`[${new Date().toISOString()}] ❌ Error: ${channelName} - ${error.message}`);
     }
   }
+  return { rateLimited: false };
 }
 
 // Serve an HTML page displaying user visit history and online status
@@ -1028,34 +1051,52 @@ setInterval(async () => {
 
     console.log(`[${new Date().toISOString()}] 📋 Processing ${channels.length} channels...`);
 
-    // Process channels in smaller batches with delays to reduce CPU pressure
-    const batchSize = 3;  // Reduced from 5 for less CPU spike
-    const batchDelayMs = 2000;  // 2 second delay between batches
+    // Process channels in batches — rate-limit-safe concurrency
+    const batchSize = 5;   // 5 concurrent requests (~5 req/s sustained)
+    const batchDelayMs = 1000;  // 1 second delay between batches
+    const rateLimitBackoffMs = 5000; // Extra pause if we get a 429
+
+    // Wrap all DB writes in a single transaction for the entire cycle
+    db.run("BEGIN");
 
     for (let i = 0; i < channels.length; i += batchSize) {
       const batch = channels.slice(i, i + batchSize);
       const batchNum = Math.floor(i / batchSize) + 1;
       const totalBatches = Math.ceil(channels.length / batchSize);
 
-      // Only log every 5th batch to reduce console spam
-      if (batchNum % 5 === 1 || batchNum === totalBatches) {
+      // Only log every 10th batch to reduce console spam
+      if (batchNum % 10 === 1 || batchNum === totalBatches) {
         console.log(`[${new Date().toISOString()}] Processing batch ${batchNum}/${totalBatches}`);
       }
 
-      await Promise.all(batch.map(channel => fetchAndLogUsers(channel)));
+      const results = await Promise.all(batch.map(channel => fetchAndLogUsers(channel)));
 
-      // Add delay between batches to prevent CPU saturation
+      // Adaptive backoff: if any request in this batch was rate-limited, pause longer
+      if (results.some(r => r.rateLimited)) {
+        console.warn(`[${new Date().toISOString()}] ⏳ Rate limit detected — backing off ${rateLimitBackoffMs}ms`);
+        await sleep(rateLimitBackoffMs);
+      }
+
+      // Add delay between batches to stay under rate limits
       if (i + batchSize < channels.length) {
         await sleep(batchDelayMs);
       }
     }
 
+    db.run("COMMIT");
+
     updateOnlineStatus(activeUserIds);
     activeUserIds.clear();  // Use Set.clear() for proper cleanup
+
+    // Clear in-memory caches at the end of each cycle to bound memory
+    channelIdCache.clear();
+    userIdCache.clear();
 
     const elapsed = Date.now() - startTime;
     console.log(`[${new Date().toISOString()}] ✅ Completed periodic user fetch in ${elapsed}ms`);
   } catch (error: any) {
+    // Rollback if the transaction is still open
+    try { db.run("ROLLBACK"); } catch (_) {}
     console.error(`[${new Date().toISOString()}] ❌ Error in periodic user fetch:`, error.message, error.stack);
   } finally {
     isFetchingUsers = false;
