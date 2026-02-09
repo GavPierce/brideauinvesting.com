@@ -1,0 +1,242 @@
+---
+/* Admin panel for managing user accounts and invite links */
+---
+
+<div class="px-4 pt-4 pb-8 space-y-6">
+	<!-- PIN Gate -->
+	<div id="pin-gate" class="max-w-md mx-auto">
+		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+			<h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Admin Panel</h2>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Enter the admin PIN to continue.</p>
+			<div id="pin-gate-error" class="hidden mb-3 p-3 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/30 dark:text-red-400"></div>
+			<div class="flex gap-3">
+				<input type="password" id="admin-pin" placeholder="Admin PIN" class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+				<button id="pin-submit" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">Unlock</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Admin Content (hidden until PIN verified) -->
+	<div id="admin-content" class="hidden space-y-6">
+		<!-- Create Invite -->
+		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+			<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Create Invite Link</h3>
+			<div id="invite-success" class="hidden mb-3 p-3 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/30 dark:text-green-400"></div>
+			<div id="invite-error" class="hidden mb-3 p-3 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/30 dark:text-red-400"></div>
+			<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+				<div>
+					<label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Email (optional)</label>
+					<input type="email" id="invite-email" placeholder="user@example.com" class="w-full bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+				</div>
+				<div>
+					<label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
+					<select id="invite-role" class="w-full bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+						<option value="viewer">Viewer</option>
+						<option value="admin">Admin</option>
+					</select>
+				</div>
+				<div class="flex items-end">
+					<button id="create-invite-btn" class="w-full px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">Generate Invite</button>
+				</div>
+			</div>
+			<!-- Generated link display -->
+			<div id="invite-link-box" class="hidden mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+				<p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Share this link (expires in 7 days):</p>
+				<div class="flex items-center gap-2">
+					<input type="text" id="invite-link-input" readonly class="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg p-2" />
+					<button id="copy-link-btn" class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Copy</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Existing Invites -->
+		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+			<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Invite Links</h3>
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+					<thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+						<tr>
+							<th class="px-4 py-3">Email</th>
+							<th class="px-4 py-3">Role</th>
+							<th class="px-4 py-3">Status</th>
+							<th class="px-4 py-3">Created</th>
+							<th class="px-4 py-3">Expires</th>
+							<th class="px-4 py-3">Link</th>
+						</tr>
+					</thead>
+					<tbody id="invites-table-body">
+						<tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">Loading...</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- Existing Accounts -->
+		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+			<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">User Accounts</h3>
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+					<thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+						<tr>
+							<th class="px-4 py-3">Email</th>
+							<th class="px-4 py-3">Display Name</th>
+							<th class="px-4 py-3">Role</th>
+							<th class="px-4 py-3">Created</th>
+						</tr>
+					</thead>
+					<tbody id="accounts-table-body">
+						<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">Loading...</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	const API_BASE = 'https://api.epmarketingandresearch.com';
+	let adminPin = '';
+
+	const pinGate = document.getElementById('pin-gate')!;
+	const adminContent = document.getElementById('admin-content')!;
+	const pinInput = document.getElementById('admin-pin') as HTMLInputElement;
+	const pinSubmit = document.getElementById('pin-submit')!;
+	const pinError = document.getElementById('pin-gate-error')!;
+
+	// PIN gate
+	pinSubmit.addEventListener('click', async () => {
+		adminPin = pinInput.value;
+		pinError.classList.add('hidden');
+
+		try {
+			const resp = await fetch(`${API_BASE}/api/admin/accounts?pin=${adminPin}`);
+			if (!resp.ok) {
+				pinError.textContent = 'Incorrect PIN';
+				pinError.classList.remove('hidden');
+				return;
+			}
+			pinGate.classList.add('hidden');
+			adminContent.classList.remove('hidden');
+			loadInvites();
+			loadAccounts();
+		} catch {
+			pinError.textContent = 'Failed to verify PIN';
+			pinError.classList.remove('hidden');
+		}
+	});
+
+	pinInput.addEventListener('keydown', (e) => {
+		if (e.key === 'Enter') pinSubmit.click();
+	});
+
+	// Create invite
+	const createBtn = document.getElementById('create-invite-btn')!;
+	const inviteSuccess = document.getElementById('invite-success')!;
+	const inviteError = document.getElementById('invite-error')!;
+	const inviteLinkBox = document.getElementById('invite-link-box')!;
+	const inviteLinkInput = document.getElementById('invite-link-input') as HTMLInputElement;
+	const copyBtn = document.getElementById('copy-link-btn')!;
+
+	createBtn.addEventListener('click', async () => {
+		inviteSuccess.classList.add('hidden');
+		inviteError.classList.add('hidden');
+		inviteLinkBox.classList.add('hidden');
+
+		const email = (document.getElementById('invite-email') as HTMLInputElement).value;
+		const role = (document.getElementById('invite-role') as HTMLSelectElement).value;
+
+		try {
+			const resp = await fetch(`${API_BASE}/api/admin/invites`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ pin: Number(adminPin), email: email || null, role }),
+			});
+			const data = await resp.json();
+			if (!resp.ok) {
+				inviteError.textContent = data.error || 'Failed to create invite';
+				inviteError.classList.remove('hidden');
+				return;
+			}
+
+			const signupUrl = `${window.location.origin}/authentication/sign-up?invite=${data.invite_token}`;
+			inviteLinkInput.value = signupUrl;
+			inviteLinkBox.classList.remove('hidden');
+			inviteSuccess.textContent = `Invite created${email ? ` for ${email}` : ''} (expires ${new Date(data.expires_at).toLocaleDateString()})`;
+			inviteSuccess.classList.remove('hidden');
+
+			loadInvites();
+		} catch {
+			inviteError.textContent = 'Failed to create invite';
+			inviteError.classList.remove('hidden');
+		}
+	});
+
+	copyBtn.addEventListener('click', () => {
+		inviteLinkInput.select();
+		navigator.clipboard.writeText(inviteLinkInput.value);
+		copyBtn.textContent = 'Copied!';
+		setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+	});
+
+	// Load invites table
+	async function loadInvites() {
+		const tbody = document.getElementById('invites-table-body')!;
+		try {
+			const resp = await fetch(`${API_BASE}/api/admin/invites?pin=${adminPin}`);
+			const data = await resp.json();
+			if (!data.invites || data.invites.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No invites yet</td></tr>';
+				return;
+			}
+			tbody.innerHTML = data.invites.map((inv: any) => {
+				const isExpired = new Date(inv.expires_at) < new Date();
+				const statusClass = inv.used ? 'text-blue-600 dark:text-blue-400' : isExpired ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400';
+				const statusText = inv.used ? 'Used' : isExpired ? 'Expired' : 'Active';
+				const signupUrl = `${window.location.origin}/authentication/sign-up?invite=${inv.token}`;
+				return `<tr class="border-b dark:border-gray-700">
+					<td class="px-4 py-3">${inv.email || '<span class="text-gray-400 italic">Any</span>'}</td>
+					<td class="px-4 py-3"><span class="text-xs font-medium px-2 py-0.5 rounded ${inv.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}">${inv.role}</span></td>
+					<td class="px-4 py-3"><span class="font-medium ${statusClass}">${statusText}</span></td>
+					<td class="px-4 py-3">${new Date(inv.created_at).toLocaleDateString()}</td>
+					<td class="px-4 py-3">${new Date(inv.expires_at).toLocaleDateString()}</td>
+					<td class="px-4 py-3">${!inv.used && !isExpired ? `<button class="copy-invite-link text-blue-600 hover:underline dark:text-blue-400 text-xs" data-url="${signupUrl}">Copy link</button>` : '—'}</td>
+				</tr>`;
+			}).join('');
+
+			// Attach copy handlers
+			tbody.querySelectorAll('.copy-invite-link').forEach((btn) => {
+				btn.addEventListener('click', () => {
+					const url = (btn as HTMLElement).getAttribute('data-url') || '';
+					navigator.clipboard.writeText(url);
+					(btn as HTMLElement).textContent = 'Copied!';
+					setTimeout(() => { (btn as HTMLElement).textContent = 'Copy link'; }, 2000);
+				});
+			});
+		} catch {
+			tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-red-400">Failed to load invites</td></tr>';
+		}
+	}
+
+	// Load accounts table
+	async function loadAccounts() {
+		const tbody = document.getElementById('accounts-table-body')!;
+		try {
+			const resp = await fetch(`${API_BASE}/api/admin/accounts?pin=${adminPin}`);
+			const data = await resp.json();
+			if (!data.accounts || data.accounts.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No accounts yet</td></tr>';
+				return;
+			}
+			tbody.innerHTML = data.accounts.map((acc: any) => {
+				return `<tr class="border-b dark:border-gray-700">
+					<td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${acc.email}</td>
+					<td class="px-4 py-3">${acc.display_name || '—'}</td>
+					<td class="px-4 py-3"><span class="text-xs font-medium px-2 py-0.5 rounded ${acc.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}">${acc.role}</span></td>
+					<td class="px-4 py-3">${new Date(acc.created_at).toLocaleDateString()}</td>
+				</tr>`;
+			}).join('');
+		} catch {
+			tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-red-400">Failed to load accounts</td></tr>';
+		}
+	}
+</script>

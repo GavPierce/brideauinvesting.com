@@ -31,12 +31,89 @@ CREATE TABLE IF NOT EXISTS visits (
 );
 `);
 
+// ─── Auth tables ─────────────────────────────────────────────────────────────
+db.run(`
+  CREATE TABLE IF NOT EXISTS accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    display_name TEXT,
+    role TEXT DEFAULT 'viewer',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+  );
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT UNIQUE NOT NULL,
+    email TEXT,
+    role TEXT DEFAULT 'viewer',
+    used INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL
+  );
+`);
+
+db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_invites_token ON invites(token)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email)`);
+
 // Performance indexes for hot query paths
 db.run(`CREATE INDEX IF NOT EXISTS idx_visits_user_channel_ts ON visits(user_id, channel_id, timestamp DESC)`);
 db.run(`CREATE INDEX IF NOT EXISTS idx_visits_channel_id ON visits(channel_id)`);
 db.run(`CREATE INDEX IF NOT EXISTS idx_visits_timestamp ON visits(timestamp)`);
 db.run(`CREATE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id)`);
 db.run(`CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name)`);
+
+// ─── Auth helpers ────────────────────────────────────────────────────────────
+function generateToken(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let token = '';
+  for (let i = 0; i < 48; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+async function hashPassword(password: string): Promise<string> {
+  return await Bun.password.hash(password, { algorithm: "bcrypt", cost: 10 });
+}
+
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return await Bun.password.verify(password, hash);
+}
+
+function getAccountFromSession(token: string | null): any {
+  if (!token) return null;
+  const row = db.query(`
+    SELECT a.id, a.email, a.display_name, a.role, a.created_at
+    FROM sessions s
+    JOIN accounts a ON s.account_id = a.id
+    WHERE s.token = ? AND s.expires_at > datetime('now')
+  `).get(token) as any;
+  return row || null;
+}
+
+function corsHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+}
 
 type visit = {
   user_id: number;
@@ -1011,11 +1088,289 @@ const server = Bun.serve({
         });
       }
     }
+    if (url.pathname === "/api/scrapeStatus") {
+      const status = {
+        isFetching: isFetchingUsers,
+        lastCycleStarted: lastCycleStarted,
+        lastCycleCompleted: lastCycleCompleted,
+        lastCycleDurationMs: lastCycleDurationMs,
+        lastCycleChannelCount: lastCycleChannelCount,
+        totalChannels: lastCycleTotalChannels,
+        cycleCount: scrapesCycleCount,
+        rateLimitsHit: rateLimitsHitLastCycle,
+        intervalMs: 300000,
+      };
+      return new Response(JSON.stringify(status), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+
+    if (url.pathname === "/api/visits/topChannels") {
+      const days = parseInt(url.searchParams.get("days") || "7");
+      const limit = parseInt(url.searchParams.get("limit") || "10");
+      const query = `
+        SELECT c.name AS channel, COUNT(*) AS visit_count
+        FROM visits v
+        JOIN channels c ON v.channel_id = c.id
+        WHERE v.timestamp >= datetime('now', '-${days} days')
+        GROUP BY v.channel_id
+        ORDER BY visit_count DESC
+        LIMIT ?;
+      `;
+      const data = db.query(query).all(limit);
+      return new Response(JSON.stringify(data), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+
+    if (url.pathname === "/api/stats/overview") {
+      const totalUsers = db.query(`SELECT COUNT(*) as count FROM users`).get() as any;
+      const onlineUsers = db.query(`SELECT COUNT(*) as count FROM users WHERE online = true`).get() as any;
+      const totalChannels = db.query(`SELECT COUNT(*) as count FROM channels`).get() as any;
+      const totalVisits = db.query(`SELECT COUNT(*) as count FROM visits`).get() as any;
+      const visitsToday = db.query(`SELECT COUNT(*) as count FROM visits WHERE timestamp >= datetime('now', '-1 day')`).get() as any;
+      const visitsThisWeek = db.query(`SELECT COUNT(*) as count FROM visits WHERE timestamp >= datetime('now', '-7 days')`).get() as any;
+
+      return new Response(JSON.stringify({
+        totalUsers: totalUsers?.count || 0,
+        onlineUsers: onlineUsers?.count || 0,
+        totalChannels: totalChannels?.count || 0,
+        totalVisits: totalVisits?.count || 0,
+        visitsToday: visitsToday?.count || 0,
+        visitsThisWeek: visitsThisWeek?.count || 0,
+      }), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+
+    // ─── Auth endpoints ──────────────────────────────────────────────────────
+    if (url.pathname === "/api/auth/signup") {
+      if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders() });
+      }
+      if (req.method === "POST") {
+        try {
+          const body = (await req.json()) as any;
+          const { invite_token, email, password, display_name } = body;
+
+          if (!invite_token || !email || !password) {
+            return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: corsHeaders() });
+          }
+
+          if (password.length < 6) {
+            return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), { status: 400, headers: corsHeaders() });
+          }
+
+          // Validate invite token
+          const invite = db.query(`SELECT * FROM invites WHERE token = ? AND used = 0 AND expires_at > datetime('now')`).get(invite_token) as any;
+          if (!invite) {
+            return new Response(JSON.stringify({ error: "Invalid or expired invite link" }), { status: 400, headers: corsHeaders() });
+          }
+
+          // If invite has a specific email, enforce it
+          if (invite.email && invite.email.toLowerCase() !== email.toLowerCase()) {
+            return new Response(JSON.stringify({ error: "This invite is for a different email address" }), { status: 400, headers: corsHeaders() });
+          }
+
+          // Check if account already exists
+          const existing = db.query(`SELECT id FROM accounts WHERE email = ?`).get(email.toLowerCase()) as any;
+          if (existing) {
+            return new Response(JSON.stringify({ error: "An account with this email already exists" }), { status: 409, headers: corsHeaders() });
+          }
+
+          // Create account
+          const hash = await hashPassword(password);
+          db.run(`INSERT INTO accounts (email, password_hash, display_name, role) VALUES (?, ?, ?, ?)`,
+            [email.toLowerCase(), hash, display_name || email.split('@')[0], invite.role || 'viewer']);
+
+          // Mark invite as used
+          db.run(`UPDATE invites SET used = 1 WHERE id = ?`, [invite.id]);
+
+          // Create session
+          const account = db.query(`SELECT id, email, display_name, role FROM accounts WHERE email = ?`).get(email.toLowerCase()) as any;
+          const sessionToken = generateToken();
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+          db.run(`INSERT INTO sessions (account_id, token, expires_at) VALUES (?, ?, ?)`, [account.id, sessionToken, expiresAt]);
+
+          console.log(`[${new Date().toISOString()}] [${requestId}] ✅ New account created: ${email}`);
+
+          return new Response(JSON.stringify({
+            token: sessionToken,
+            account: { id: account.id, email: account.email, display_name: account.display_name, role: account.role },
+          }), { headers: corsHeaders() });
+        } catch (error: any) {
+          console.error(`[${new Date().toISOString()}] [${requestId}] ❌ Signup error:`, error.message);
+          return new Response(JSON.stringify({ error: "Signup failed" }), { status: 500, headers: corsHeaders() });
+        }
+      }
+    }
+
+    if (url.pathname === "/api/auth/login") {
+      if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders() });
+      }
+      if (req.method === "POST") {
+        try {
+          const body = (await req.json()) as any;
+          const { email, password } = body;
+
+          if (!email || !password) {
+            return new Response(JSON.stringify({ error: "Email and password are required" }), { status: 400, headers: corsHeaders() });
+          }
+
+          const account = db.query(`SELECT * FROM accounts WHERE email = ?`).get(email.toLowerCase()) as any;
+          if (!account) {
+            return new Response(JSON.stringify({ error: "Invalid email or password" }), { status: 401, headers: corsHeaders() });
+          }
+
+          const valid = await verifyPassword(password, account.password_hash);
+          if (!valid) {
+            return new Response(JSON.stringify({ error: "Invalid email or password" }), { status: 401, headers: corsHeaders() });
+          }
+
+          // Create session
+          const sessionToken = generateToken();
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+          db.run(`INSERT INTO sessions (account_id, token, expires_at) VALUES (?, ?, ?)`, [account.id, sessionToken, expiresAt]);
+
+          // Clean up expired sessions for this account
+          db.run(`DELETE FROM sessions WHERE account_id = ? AND expires_at <= datetime('now')`, [account.id]);
+
+          console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Login: ${email}`);
+
+          return new Response(JSON.stringify({
+            token: sessionToken,
+            account: { id: account.id, email: account.email, display_name: account.display_name, role: account.role },
+          }), { headers: corsHeaders() });
+        } catch (error: any) {
+          console.error(`[${new Date().toISOString()}] [${requestId}] ❌ Login error:`, error.message);
+          return new Response(JSON.stringify({ error: "Login failed" }), { status: 500, headers: corsHeaders() });
+        }
+      }
+    }
+
+    if (url.pathname === "/api/auth/logout") {
+      if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders() });
+      }
+      if (req.method === "POST") {
+        const authHeader = req.headers.get("Authorization");
+        const token = authHeader?.replace("Bearer ", "");
+        if (token) {
+          db.run(`DELETE FROM sessions WHERE token = ?`, [token]);
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders() });
+      }
+    }
+
+    if (url.pathname === "/api/auth/me") {
+      if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders() });
+      }
+      const authHeader = req.headers.get("Authorization");
+      const token = authHeader?.replace("Bearer ", "");
+      const account = getAccountFromSession(token || null);
+      if (!account) {
+        return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401, headers: corsHeaders() });
+      }
+      return new Response(JSON.stringify({ account }), { headers: corsHeaders() });
+    }
+
+    if (url.pathname === "/api/auth/invite/validate") {
+      const token = url.searchParams.get("token");
+      if (!token) {
+        return new Response(JSON.stringify({ valid: false, error: "Missing token" }), { status: 400, headers: corsHeaders() });
+      }
+      const invite = db.query(`SELECT token, email, role, expires_at FROM invites WHERE token = ? AND used = 0 AND expires_at > datetime('now')`).get(token) as any;
+      if (!invite) {
+        return new Response(JSON.stringify({ valid: false, error: "Invalid or expired invite" }), { headers: corsHeaders() });
+      }
+      return new Response(JSON.stringify({ valid: true, email: invite.email, role: invite.role }), { headers: corsHeaders() });
+    }
+
+    // ─── Admin endpoints (require PIN) ───────────────────────────────────────
+    if (url.pathname === "/api/admin/invites") {
+      if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders() });
+      }
+      if (req.method === "POST") {
+        try {
+          const body = (await req.json()) as any;
+          const { pin, email, role } = body;
+
+          if (pin != 4756) {
+            return new Response(JSON.stringify({ error: "Incorrect Auth Pin" }), { status: 401, headers: corsHeaders() });
+          }
+
+          const inviteToken = generateToken();
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+          db.run(`INSERT INTO invites (token, email, role, expires_at) VALUES (?, ?, ?, ?)`,
+            [inviteToken, email?.toLowerCase() || null, role || 'viewer', expiresAt]);
+
+          console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Invite created for: ${email || '(any email)'}`);
+
+          return new Response(JSON.stringify({
+            invite_token: inviteToken,
+            email: email || null,
+            role: role || 'viewer',
+            expires_at: expiresAt,
+          }), { headers: corsHeaders() });
+        } catch (error: any) {
+          console.error(`[${new Date().toISOString()}] [${requestId}] ❌ Invite creation error:`, error.message);
+          return new Response(JSON.stringify({ error: "Failed to create invite" }), { status: 500, headers: corsHeaders() });
+        }
+      }
+      if (req.method === "GET") {
+        const pinParam = url.searchParams.get("pin");
+        if (pinParam != "4756") {
+          return new Response(JSON.stringify({ error: "Incorrect Auth Pin" }), { status: 401, headers: corsHeaders() });
+        }
+        const invites = db.query(`SELECT id, token, email, role, used, created_at, expires_at FROM invites ORDER BY created_at DESC`).all();
+        return new Response(JSON.stringify({ invites }), { headers: corsHeaders() });
+      }
+    }
+
+    if (url.pathname === "/api/admin/accounts") {
+      if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders() });
+      }
+      const pinParam = url.searchParams.get("pin") || (req.method === "POST" ? ((await req.json()) as any).pin : null);
+      if (pinParam != 4756 && pinParam != "4756") {
+        return new Response(JSON.stringify({ error: "Incorrect Auth Pin" }), { status: 401, headers: corsHeaders() });
+      }
+      const accounts = db.query(`SELECT id, email, display_name, role, created_at FROM accounts ORDER BY created_at DESC`).all();
+      return new Response(JSON.stringify({ accounts }), { headers: corsHeaders() });
+    }
+
     const totalElapsed = Date.now() - requestStart;
     console.log(`[${new Date().toISOString()}] [${requestId}] ⬅️  404 Not Found (${totalElapsed}ms)`);
     return new Response("Not Found", { status: 404 });
   },
 });
+
+// Scrape status tracking
+let lastCycleStarted: string | null = null;
+let lastCycleCompleted: string | null = null;
+let lastCycleDurationMs: number = 0;
+let lastCycleChannelCount: number = 0;
+let lastCycleTotalChannels: number = 0;
+let scrapesCycleCount: number = 0;
+let rateLimitsHitLastCycle: number = 0;
 
 // Prevent overlapping executions
 let isFetchingUsers = false;
@@ -1033,6 +1388,8 @@ setInterval(async () => {
   try {
     console.log(`[${new Date().toISOString()}] 🔄 Starting periodic user fetch...`);
     const startTime = Date.now();
+    lastCycleStarted = new Date().toISOString();
+    rateLimitsHitLastCycle = 0;
 
     // get channel from channels.json - use async Bun.file() for non-blocking I/O
     const channelsFile = Bun.file("channels.json");
@@ -1049,6 +1406,7 @@ setInterval(async () => {
       console.warn(`[${new Date().toISOString()}] ⚠️  Filtered out ${originalCount - channels.length} invalid channels from periodic fetch`);
     }
 
+    lastCycleTotalChannels = channels.length;
     console.log(`[${new Date().toISOString()}] 📋 Processing ${channels.length} channels...`);
 
     // Process channels in batches — rate-limit-safe concurrency
@@ -1059,6 +1417,7 @@ setInterval(async () => {
     // Wrap all DB writes in a single transaction for the entire cycle
     db.run("BEGIN");
 
+    let channelsProcessed = 0;
     for (let i = 0; i < channels.length; i += batchSize) {
       const batch = channels.slice(i, i + batchSize);
       const batchNum = Math.floor(i / batchSize) + 1;
@@ -1070,9 +1429,12 @@ setInterval(async () => {
       }
 
       const results = await Promise.all(batch.map(channel => fetchAndLogUsers(channel)));
+      channelsProcessed += batch.length;
 
       // Adaptive backoff: if any request in this batch was rate-limited, pause longer
-      if (results.some(r => r.rateLimited)) {
+      const rateLimitedCount = results.filter(r => r.rateLimited).length;
+      if (rateLimitedCount > 0) {
+        rateLimitsHitLastCycle += rateLimitedCount;
         console.warn(`[${new Date().toISOString()}] ⏳ Rate limit detected — backing off ${rateLimitBackoffMs}ms`);
         await sleep(rateLimitBackoffMs);
       }
@@ -1093,6 +1455,10 @@ setInterval(async () => {
     userIdCache.clear();
 
     const elapsed = Date.now() - startTime;
+    lastCycleCompleted = new Date().toISOString();
+    lastCycleDurationMs = elapsed;
+    lastCycleChannelCount = channelsProcessed;
+    scrapesCycleCount++;
     console.log(`[${new Date().toISOString()}] ✅ Completed periodic user fetch in ${elapsed}ms`);
   } catch (error: any) {
     // Rollback if the transaction is still open

@@ -86,6 +86,47 @@
 		return list.split(',');
 	};
 </script>
+
+<script>
+	import { validateSession, getAccount, logout, isLoggedIn } from '../modules/auth.client.js';
+
+	const isAuthPage = window.location.pathname.startsWith('/authentication/');
+
+	if (!isAuthPage) {
+		// Gate: redirect to sign-in if not logged in
+		if (!isLoggedIn()) {
+			window.location.href = '/authentication/sign-in';
+		} else {
+			// Validate session in background
+			validateSession().then((account) => {
+				if (!account) {
+					window.location.href = '/authentication/sign-in';
+				}
+			});
+		}
+
+		// Populate user name
+		const account = getAccount();
+		const nameEl = document.getElementById('nav-user-name');
+		if (nameEl && account) {
+			nameEl.textContent = account.display_name || account.email;
+		}
+
+		// Logout handler
+		const logoutBtn = document.getElementById('logout-btn');
+		logoutBtn?.addEventListener('click', async () => {
+			await logout();
+			window.location.href = '/authentication/sign-in';
+		});
+	} else {
+		// Hide user menu on auth pages
+		const userMenu = document.getElementById('user-menu-area');
+		if (userMenu) userMenu.style.display = 'none';
+		const addChannel = document.getElementById('add-channel');
+		if (addChannel) addChannel.style.display = 'none';
+	}
+</script>
+
 <style>
 	.show-modal {
 		display: block;
@@ -111,15 +152,28 @@
 					>EP Marketing and Research</span
 				>
 			</div>
-			<button
-				class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-				id="add-channel"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
-					<path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-				</svg>
-				Add Channel
-			</button>
+			<div class="flex items-center gap-3">
+				<button
+					class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+					id="add-channel"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+						<path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+					</svg>
+					Add Channel
+				</button>
+				<!-- User menu -->
+				<div class="flex items-center gap-2" id="user-menu-area">
+					<span class="text-sm text-gray-600 dark:text-gray-300 hidden sm:inline" id="nav-user-name"></span>
+					<button
+						id="logout-btn"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+						Sign out
+					</button>
+				</div>
+			</div>
 		</div>
 	</div>
 	<div
