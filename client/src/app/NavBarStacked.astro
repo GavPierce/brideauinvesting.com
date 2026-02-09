@@ -90,7 +90,7 @@
 <script>
 	import { validateSession, getAccount, logout, isLoggedIn } from '../modules/auth.client.js';
 
-	const isAuthPage = window.location.pathname.startsWith('/authentication/');
+	const isAuthPage = window.location.pathname.startsWith('/authentication/') || window.location.pathname.startsWith('/admin');
 
 	if (!isAuthPage) {
 		// Gate: redirect to sign-in if not logged in

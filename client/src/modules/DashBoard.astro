@@ -2,153 +2,192 @@
 /* eslint max-lines: 'off' */
 ---
 
-<div class="px-4 pt-4 pb-8 space-y-6">
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 pt-6 pb-10 space-y-8">
 
-	<!-- Row 1: Stats Overview Cards -->
-	<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-			<p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Visits This Week</p>
-			<p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white" id="stat-visits-week">—</p>
+	<!-- Row 1: Stats Overview — gradient-accent cards -->
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+		<!-- Visits This Week -->
+		<div class="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60">
+			<div class="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-blue-500 to-indigo-500"></div>
+			<div class="pl-5 pr-4 py-5 flex items-start gap-4">
+				<div class="flex-shrink-0 flex items-center justify-center h-11 w-11 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+				</div>
+				<div class="min-w-0">
+					<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Visits This Week</p>
+					<p class="mt-1 text-2xl font-extrabold text-gray-900 dark:text-white leading-none" id="stat-visits-week">—</p>
+				</div>
+			</div>
 		</div>
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-			<p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Visits Today</p>
-			<p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white" id="stat-visits-today">—</p>
+
+		<!-- Visits Today -->
+		<div class="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60">
+			<div class="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-cyan-400 to-blue-500"></div>
+			<div class="pl-5 pr-4 py-5 flex items-start gap-4">
+				<div class="flex-shrink-0 flex items-center justify-center h-11 w-11 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+				</div>
+				<div class="min-w-0">
+					<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Visits Today</p>
+					<p class="mt-1 text-2xl font-extrabold text-gray-900 dark:text-white leading-none" id="stat-visits-today">—</p>
+				</div>
+			</div>
 		</div>
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-			<p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Users Online</p>
-			<p class="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="stat-online">—</p>
+
+		<!-- Users Online -->
+		<div class="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60">
+			<div class="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-emerald-400 to-green-600"></div>
+			<div class="pl-5 pr-4 py-5 flex items-start gap-4">
+				<div class="flex-shrink-0 flex items-center justify-center h-11 w-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+				</div>
+				<div class="min-w-0">
+					<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Users Online</p>
+					<p class="mt-1 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-none" id="stat-online">—</p>
+					<p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500"><span id="stat-total-users">—</span> total</p>
+				</div>
+			</div>
 		</div>
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-			<p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Users</p>
-			<p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white" id="stat-total-users">—</p>
-		</div>
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-			<p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Channels</p>
-			<p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white" id="stat-channels">—</p>
-		</div>
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-			<p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trending</p>
-			<p class="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400 truncate" id="stat-trending">—</p>
-			<p class="text-xs text-gray-500 dark:text-gray-400" id="stat-trending-pct"></p>
+
+		<!-- Trending Channel -->
+		<div class="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60">
+			<div class="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-amber-400 to-orange-500"></div>
+			<div class="pl-5 pr-4 py-5 flex items-start gap-4">
+				<div class="flex-shrink-0 flex items-center justify-center h-11 w-11 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg>
+				</div>
+				<div class="min-w-0">
+					<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Trending</p>
+					<p class="mt-1 text-xl font-extrabold text-amber-600 dark:text-amber-400 leading-none truncate" id="stat-trending">—</p>
+					<p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500" id="stat-trending-pct"></p>
+				</div>
+			</div>
 		</div>
 	</div>
 
-	<!-- Row 2: Top Channels Chart + Scraping Status -->
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-		<!-- Top Channels Chart -->
-		<div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-			<div class="flex items-center justify-between mb-4">
-				<h3 class="text-base font-semibold text-gray-900 dark:text-white">Top Channels (7 days)</h3>
-				<select id="top-channels-days" class="text-xs bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500">
-					<option value="7" selected>Last 7 days</option>
-					<option value="14">Last 14 days</option>
-					<option value="30">Last 30 days</option>
-				</select>
+	<!-- Row 2: Top Channels Chart + Scraper Status -->
+	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+		<!-- Chart Card -->
+		<div class="lg:col-span-2 rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5 sm:p-6">
+			<div class="flex items-center justify-between mb-5">
+				<div>
+					<h3 class="text-lg font-bold text-gray-900 dark:text-white" id="chart-title">Top Channels</h3>
+					<p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">By visit volume</p>
+				</div>
+				<div class="flex items-center gap-2">
+					<button data-days="7"  class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-sm">7d</button>
+					<button data-days="14" class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">14d</button>
+					<button data-days="30" class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">30d</button>
+				</div>
 			</div>
-			<div id="top-channels-chart" class="min-h-[280px]"></div>
+			<div id="top-channels-chart" class="min-h-[300px]"></div>
 		</div>
 
-		<!-- Scraping Status Panel -->
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-			<div class="flex items-center justify-between mb-4">
-				<h3 class="text-base font-semibold text-gray-900 dark:text-white">Scraper Status</h3>
-				<span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full" id="scrape-status-badge">
+		<!-- Scraper Status Card -->
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5 sm:p-6 flex flex-col">
+			<div class="flex items-center justify-between mb-5">
+				<h3 class="text-lg font-bold text-gray-900 dark:text-white">Scraper</h3>
+				<span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" id="scrape-status-badge">
 					<span class="w-2 h-2 rounded-full" id="scrape-status-dot"></span>
 					<span id="scrape-status-text">Loading...</span>
 				</span>
 			</div>
-			<dl class="space-y-3 text-sm">
-				<div class="flex justify-between">
-					<dt class="text-gray-500 dark:text-gray-400">Last completed</dt>
-					<dd class="font-medium text-gray-900 dark:text-white" id="scrape-last-completed">—</dd>
+			<dl class="space-y-3.5 text-sm flex-1">
+				<div class="flex justify-between items-center">
+					<dt class="text-gray-400 dark:text-gray-500">Last completed</dt>
+					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-last-completed">—</dd>
 				</div>
-				<div class="flex justify-between">
-					<dt class="text-gray-500 dark:text-gray-400">Duration</dt>
-					<dd class="font-medium text-gray-900 dark:text-white" id="scrape-duration">—</dd>
+				<div class="flex justify-between items-center">
+					<dt class="text-gray-400 dark:text-gray-500">Duration</dt>
+					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-duration">—</dd>
 				</div>
-				<div class="flex justify-between">
-					<dt class="text-gray-500 dark:text-gray-400">Channels scraped</dt>
-					<dd class="font-medium text-gray-900 dark:text-white" id="scrape-channels">—</dd>
+				<div class="flex justify-between items-center">
+					<dt class="text-gray-400 dark:text-gray-500">Channels</dt>
+					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-channels">—</dd>
 				</div>
-				<div class="flex justify-between">
-					<dt class="text-gray-500 dark:text-gray-400">Cycle count</dt>
-					<dd class="font-medium text-gray-900 dark:text-white" id="scrape-cycles">—</dd>
+				<div class="flex justify-between items-center">
+					<dt class="text-gray-400 dark:text-gray-500">Cycles</dt>
+					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-cycles">—</dd>
 				</div>
-				<div class="flex justify-between">
-					<dt class="text-gray-500 dark:text-gray-400">Rate limits (last cycle)</dt>
-					<dd class="font-medium text-gray-900 dark:text-white" id="scrape-rate-limits">—</dd>
+				<div class="flex justify-between items-center">
+					<dt class="text-gray-400 dark:text-gray-500">Rate limits</dt>
+					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-rate-limits">—</dd>
 				</div>
-				<div class="flex justify-between">
-					<dt class="text-gray-500 dark:text-gray-400">Interval</dt>
-					<dd class="font-medium text-gray-900 dark:text-white" id="scrape-interval">—</dd>
+				<div class="flex justify-between items-center">
+					<dt class="text-gray-400 dark:text-gray-500">Interval</dt>
+					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-interval">—</dd>
 				</div>
 			</dl>
-			<!-- Progress bar for active scrape -->
-			<div class="mt-4 hidden" id="scrape-progress-wrap">
-				<div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-					<span>Scraping in progress...</span>
+			<!-- Progress -->
+			<div class="mt-5 hidden" id="scrape-progress-wrap">
+				<div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1.5">
+					<span class="font-medium">Scraping...</span>
 					<span id="scrape-progress-text"></span>
 				</div>
-				<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-					<div class="bg-blue-600 h-1.5 rounded-full transition-all duration-500" id="scrape-progress-bar" style="width: 0%"></div>
+				<div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+					<div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-700 ease-out" id="scrape-progress-bar" style="width: 0%"></div>
 				</div>
 			</div>
 		</div>
 	</div>
 
-	<!-- Row 3: Data Panels -->
-	<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-		<!-- Tab Navigation -->
-		<div class="border-b border-gray-200 dark:border-gray-700">
-			<ul class="flex text-sm font-medium text-center text-gray-600 dark:text-gray-400" id="fullWidthTab" data-tabs-toggle="#fullWidthTabContent" role="tablist">
-				<li class="flex-1">
-					<button id="visits-tab" role="tab" class="inline-flex items-center justify-center gap-2 w-full px-4 py-3.5 border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 dark:hover:text-blue-400 transition-colors">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-						Channel Visits
-					</button>
-				</li>
-				<li class="flex-1">
-					<button id="faq-tab" type="button" role="tab" class="inline-flex items-center justify-center gap-2 w-full px-4 py-3.5 border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 dark:hover:text-blue-400 transition-colors">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-						Channel Users
-					</button>
-				</li>
-				<li class="flex-1">
-					<button id="about-tab" role="tab" class="inline-flex items-center justify-center gap-2 w-full px-4 py-3.5 border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 dark:hover:text-blue-400 transition-colors">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-						User Search
-					</button>
-				</li>
-			</ul>
-		</div>
+	<!-- Row 3: Data Explorer — 3-column on desktop -->
+	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-		<div class="flex flex-wrap">
-			<!-- Column: Channel Visits -->
-			<div class="p-4 overflow-y-auto h-[32em] w-full lg:w-1/3 border-r border-gray-100 dark:border-gray-700" id="visits" role="tabpanel" aria-labelledby="visits-tab">
-				<label for="channel-tabs1" class="sr-only">Select channel</label>
-				<select id="channel-tabs1" class="mb-3 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select>
-				<ul role="list" id="visits-list" class="divide-y divide-gray-100 dark:divide-gray-700"></ul>
-			</div>
-
-			<!-- Column: Channel Users -->
-			<div class="p-4 overflow-y-auto h-[32em] w-full lg:w-1/3 border-r border-gray-100 dark:border-gray-700" id="faq" role="tabpanel" aria-labelledby="faq-tab">
-				<label for="channel-tabs2" class="sr-only">Select channel</label>
-				<select id="channel-tabs2" class="mb-3 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select>
-				<ul role="list" id="channel-list" class="divide-y divide-gray-100 dark:divide-gray-700"></ul>
-			</div>
-
-			<!-- Column: User Visits Search -->
-			<div class="p-4 overflow-y-auto max-h-[32em] w-full lg:w-1/3" id="about" role="tabpanel" aria-labelledby="about-tab">
-				<div class="relative mb-4">
-					<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-						<span class="text-gray-400 dark:text-gray-500 text-sm font-medium">@</span>
-					</div>
-					<input id="user-input" placeholder="Search by handle — press Enter" class="pl-8 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+		<!-- Channel Visits -->
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex flex-col overflow-hidden">
+			<div class="px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-700/60">
+				<div class="flex items-center gap-2 mb-3">
+					<span class="flex items-center justify-center h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+						<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+					</span>
+					<h3 class="text-sm font-bold text-gray-900 dark:text-white">Channel Visits</h3>
 				</div>
-				<div class="text-sm font-medium text-center mb-2" id="user-info"></div>
-				<ul role="list" id="user-list" class="divide-y divide-gray-100 dark:divide-gray-700"></ul>
+				<select id="channel-tabs1" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 p-2.5 transition-shadow"></select>
+			</div>
+			<div class="flex-1 overflow-y-auto p-4" id="visits" style="max-height: 28rem;">
+				<ul role="list" id="visits-list" class="space-y-0.5"></ul>
 			</div>
 		</div>
+
+		<!-- Channel Users -->
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex flex-col overflow-hidden">
+			<div class="px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-700/60">
+				<div class="flex items-center gap-2 mb-3">
+					<span class="flex items-center justify-center h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+						<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+					</span>
+					<h3 class="text-sm font-bold text-gray-900 dark:text-white">Channel Users</h3>
+				</div>
+				<select id="channel-tabs2" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 p-2.5 transition-shadow"></select>
+			</div>
+			<div class="flex-1 overflow-y-auto p-4" id="faq" style="max-height: 28rem;">
+				<ul role="list" id="channel-list" class="space-y-0.5"></ul>
+			</div>
+		</div>
+
+		<!-- User Search -->
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex flex-col overflow-hidden">
+			<div class="px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-700/60">
+				<div class="flex items-center gap-2 mb-3">
+					<span class="flex items-center justify-center h-7 w-7 rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+						<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+					</span>
+					<h3 class="text-sm font-bold text-gray-900 dark:text-white">User Search</h3>
+				</div>
+				<div class="relative">
+					<div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+						<span class="text-gray-400 dark:text-gray-500 text-sm font-bold">@</span>
+					</div>
+					<input id="user-input" placeholder="Search by handle — press Enter" class="pl-8 w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500 p-2.5 transition-shadow" />
+				</div>
+			</div>
+			<div class="flex-1 overflow-y-auto p-4" id="about" style="max-height: 28rem;">
+				<div class="text-sm font-medium text-center mb-3" id="user-info"></div>
+				<ul role="list" id="user-list" class="space-y-0.5"></ul>
+			</div>
+		</div>
+
 	</div>
 </div>
 

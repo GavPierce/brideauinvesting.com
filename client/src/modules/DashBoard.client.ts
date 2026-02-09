@@ -262,17 +262,24 @@ async function loadTopChannelsChart(days: number = 7) {
 
 loadTopChannelsChart(7);
 
-const daysSelect = document.getElementById('top-channels-days') as HTMLSelectElement;
-if (daysSelect) {
-	daysSelect.addEventListener('change', () => {
-		const title = daysSelect.closest('.bg-white, .dark\\:bg-gray-800')?.querySelector('h3');
-		if (title) title.textContent = `Top Channels (${daysSelect.value} days)`;
-		loadTopChannelsChart(parseInt(daysSelect.value));
+// Day-picker buttons
+let activeDays = 7;
+const daysBtns = document.querySelectorAll('.days-btn');
+daysBtns.forEach((btn) => {
+	btn.addEventListener('click', () => {
+		const days = parseInt((btn as HTMLElement).getAttribute('data-days') || '7');
+		activeDays = days;
+		// Update active state
+		daysBtns.forEach((b) => {
+			(b as HTMLElement).className = 'days-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
+		});
+		(btn as HTMLElement).className = 'days-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-sm';
+		loadTopChannelsChart(days);
 	});
-}
+});
 
 document.addEventListener('dark-mode', () => {
-	if (topChannelsChart) loadTopChannelsChart(parseInt(daysSelect?.value || '7'));
+	if (topChannelsChart) loadTopChannelsChart(activeDays);
 });
 
 // ─── 4. Shared user visits renderer ──────────────────────────────────────────
@@ -380,8 +387,8 @@ if (document.getElementById('channel-tabs1')) {
 				</button>`;
 
 			li.querySelector('.toggle-about-btn')?.addEventListener('click', async function () {
-				const aboutDiv = document.getElementById('about-tab');
-				if (aboutDiv) aboutDiv.click();
+				const aboutDiv = document.getElementById('about');
+				if (aboutDiv) aboutDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 				const btn = this as HTMLElement;
 				const userInput = document.getElementById('user-input') as HTMLInputElement;
 				if (userInput) userInput.value = (btn.getAttribute('data-name') || '').replace(/\s/g, '').replace('@', '');
@@ -389,7 +396,7 @@ if (document.getElementById('channel-tabs1')) {
 				if (userInfo) {
 					const isOnline = btn.getAttribute('data-online') === '1';
 					userInfo.innerHTML = `<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-400'}"></span>${isOnline ? 'Online' : 'Offline'}</span>`;
-					userInfo.className = `text-sm font-medium text-center mb-2 ${isOnline ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`;
+					userInfo.className = `text-sm font-medium text-center mb-3 ${isOnline ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`;
 				}
 				await renderUserVisitsByQuery({ userId: Number(btn.getAttribute('data-user-id')) });
 			});
@@ -456,8 +463,8 @@ if (document.getElementById('channel-tabs2')) {
 				</button>`;
 
 			li.querySelector('.toggle-about-btn')?.addEventListener('click', async function () {
-				const aboutDiv = document.getElementById('about-tab');
-				if (aboutDiv) aboutDiv.click();
+				const aboutDiv = document.getElementById('about');
+				if (aboutDiv) aboutDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 				const btn = this as HTMLElement;
 				const userInput = document.getElementById('user-input') as HTMLInputElement;
 				if (userInput) userInput.value = (btn.getAttribute('data-name') || '').replace(/\s/g, '').replace('@', '');
@@ -465,7 +472,7 @@ if (document.getElementById('channel-tabs2')) {
 				if (userInfo) {
 					const isOnline = btn.getAttribute('data-online') === '1';
 					userInfo.innerHTML = `<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-400'}"></span>${isOnline ? 'Online' : 'Offline'}</span>`;
-					userInfo.className = `text-sm font-medium text-center mb-2 ${isOnline ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`;
+					userInfo.className = `text-sm font-medium text-center mb-3 ${isOnline ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`;
 				}
 				await renderUserVisitsByQuery({ public_id: btn.getAttribute('data-public-id') || '' });
 			});
