@@ -65,70 +65,20 @@
 		</div>
 	</div>
 
-	<!-- Row 2: Top Channels Chart + Scraper Status -->
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-		<!-- Chart Card -->
-		<div class="lg:col-span-2 rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5 sm:p-6">
-			<div class="flex items-center justify-between mb-5">
-				<div>
-					<h3 class="text-lg font-bold text-gray-900 dark:text-white" id="chart-title">Top Channels</h3>
-					<p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">By visit volume</p>
-				</div>
-				<div class="flex items-center gap-2">
-					<button data-days="7"  class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-sm">7d</button>
-					<button data-days="14" class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">14d</button>
-					<button data-days="30" class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">30d</button>
-				</div>
+	<!-- Row 2: Top Channels Chart (full width) -->
+	<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5 sm:p-6">
+		<div class="flex items-center justify-between mb-5">
+			<div>
+				<h3 class="text-lg font-bold text-gray-900 dark:text-white" id="chart-title">Top Channels</h3>
+				<p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">By visit volume</p>
 			</div>
-			<div id="top-channels-chart" class="min-h-[300px]"></div>
-		</div>
-
-		<!-- Scraper Status Card -->
-		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5 sm:p-6 flex flex-col">
-			<div class="flex items-center justify-between mb-5">
-				<h3 class="text-lg font-bold text-gray-900 dark:text-white">Scraper</h3>
-				<span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" id="scrape-status-badge">
-					<span class="w-2 h-2 rounded-full" id="scrape-status-dot"></span>
-					<span id="scrape-status-text">Loading...</span>
-				</span>
-			</div>
-			<dl class="space-y-3.5 text-sm flex-1">
-				<div class="flex justify-between items-center">
-					<dt class="text-gray-400 dark:text-gray-500">Last completed</dt>
-					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-last-completed">—</dd>
-				</div>
-				<div class="flex justify-between items-center">
-					<dt class="text-gray-400 dark:text-gray-500">Duration</dt>
-					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-duration">—</dd>
-				</div>
-				<div class="flex justify-between items-center">
-					<dt class="text-gray-400 dark:text-gray-500">Channels</dt>
-					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-channels">—</dd>
-				</div>
-				<div class="flex justify-between items-center">
-					<dt class="text-gray-400 dark:text-gray-500">Cycles</dt>
-					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-cycles">—</dd>
-				</div>
-				<div class="flex justify-between items-center">
-					<dt class="text-gray-400 dark:text-gray-500">Rate limits</dt>
-					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-rate-limits">—</dd>
-				</div>
-				<div class="flex justify-between items-center">
-					<dt class="text-gray-400 dark:text-gray-500">Interval</dt>
-					<dd class="font-semibold text-gray-800 dark:text-gray-200" id="scrape-interval">—</dd>
-				</div>
-			</dl>
-			<!-- Progress -->
-			<div class="mt-5 hidden" id="scrape-progress-wrap">
-				<div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1.5">
-					<span class="font-medium">Scraping...</span>
-					<span id="scrape-progress-text"></span>
-				</div>
-				<div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-					<div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-700 ease-out" id="scrape-progress-bar" style="width: 0%"></div>
-				</div>
+			<div class="flex items-center gap-2">
+				<button data-days="7"  class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-sm">7d</button>
+				<button data-days="14" class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">14d</button>
+				<button data-days="30" class="days-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">30d</button>
 			</div>
 		</div>
+		<div id="top-channels-chart" class="min-h-[300px]"></div>
 	</div>
 
 	<!-- Row 3: Data Explorer — 3-column on desktop -->
@@ -188,6 +138,58 @@
 			</div>
 		</div>
 
+	</div>
+
+	<!-- Row 4: Scraper Status (bottom) -->
+	<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5 sm:p-6">
+		<div class="flex items-center justify-between mb-4">
+			<div class="flex items-center gap-2">
+				<span class="flex items-center justify-center h-7 w-7 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M12 12v.01"/></svg>
+				</span>
+				<h3 class="text-sm font-bold text-gray-900 dark:text-white">Scraper Status</h3>
+			</div>
+			<span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" id="scrape-status-badge">
+				<span class="w-2 h-2 rounded-full" id="scrape-status-dot"></span>
+				<span id="scrape-status-text">Loading...</span>
+			</span>
+		</div>
+		<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-3 text-sm">
+			<div>
+				<dt class="text-gray-400 dark:text-gray-500 text-xs">Last completed</dt>
+				<dd class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5" id="scrape-last-completed">—</dd>
+			</div>
+			<div>
+				<dt class="text-gray-400 dark:text-gray-500 text-xs">Duration</dt>
+				<dd class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5" id="scrape-duration">—</dd>
+			</div>
+			<div>
+				<dt class="text-gray-400 dark:text-gray-500 text-xs">Channels</dt>
+				<dd class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5" id="scrape-channels">—</dd>
+			</div>
+			<div>
+				<dt class="text-gray-400 dark:text-gray-500 text-xs">Cycles</dt>
+				<dd class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5" id="scrape-cycles">—</dd>
+			</div>
+			<div>
+				<dt class="text-gray-400 dark:text-gray-500 text-xs">Rate limits</dt>
+				<dd class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5" id="scrape-rate-limits">—</dd>
+			</div>
+			<div>
+				<dt class="text-gray-400 dark:text-gray-500 text-xs">Interval</dt>
+				<dd class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5" id="scrape-interval">—</dd>
+			</div>
+		</div>
+		<!-- Progress -->
+		<div class="mt-4 hidden" id="scrape-progress-wrap">
+			<div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1.5">
+				<span class="font-medium">Scraping...</span>
+				<span id="scrape-progress-text"></span>
+			</div>
+			<div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+				<div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-700 ease-out" id="scrape-progress-bar" style="width: 0%"></div>
+			</div>
+		</div>
 	</div>
 </div>
 

@@ -1,26 +1,65 @@
 ---
-/* Admin panel for managing user accounts and invite links */
+/* Admin panel for managing user accounts, invite links, and channels */
 ---
 
-<div class="px-4 pt-4 pb-8 space-y-6">
+<div class="max-w-[1200px] mx-auto px-4 sm:px-6 pt-6 pb-10 space-y-6">
 	<!-- PIN Gate -->
-	<div id="pin-gate" class="max-w-md mx-auto">
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+	<div id="pin-gate" class="max-w-md mx-auto mt-12">
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-6">
 			<h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Admin Panel</h2>
 			<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Enter the admin PIN to continue.</p>
 			<div id="pin-gate-error" class="hidden mb-3 p-3 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/30 dark:text-red-400"></div>
 			<div class="flex gap-3">
 				<input type="password" id="admin-pin" placeholder="Admin PIN" class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-				<button id="pin-submit" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">Unlock</button>
+				<button id="pin-submit" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors">Unlock</button>
 			</div>
 		</div>
 	</div>
 
 	<!-- Admin Content (hidden until PIN verified) -->
 	<div id="admin-content" class="hidden space-y-6">
+
+		<!-- Channel Management -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+			<!-- Add Channels -->
+			<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5">
+				<div class="flex items-center gap-2 mb-4">
+					<span class="flex items-center justify-center h-8 w-8 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+					</span>
+					<h3 class="text-base font-bold text-gray-900 dark:text-white">Add Channels</h3>
+				</div>
+				<p class="text-xs text-gray-400 dark:text-gray-500 mb-3">Comma separated, $ symbol optional. e.g. $hmr, bbb, utc</p>
+				<div id="add-ch-success" class="hidden mb-3 p-3 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/30 dark:text-green-400"></div>
+				<div id="add-ch-error" class="hidden mb-3 p-3 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/30 dark:text-red-400"></div>
+				<input type="text" id="add-ch-input" placeholder="e.g. $hmr, bbb, utc, $lmr" class="w-full bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-3" />
+				<button id="add-ch-btn" class="w-full px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 transition-colors">Add Channels</button>
+			</div>
+
+			<!-- Remove Channels -->
+			<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5">
+				<div class="flex items-center gap-2 mb-4">
+					<span class="flex items-center justify-center h-8 w-8 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>
+					</span>
+					<h3 class="text-base font-bold text-gray-900 dark:text-white">Remove Channels</h3>
+				</div>
+				<p class="text-xs text-gray-400 dark:text-gray-500 mb-3">Comma separated list of channels to remove.</p>
+				<div id="rm-ch-success" class="hidden mb-3 p-3 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/30 dark:text-green-400"></div>
+				<div id="rm-ch-error" class="hidden mb-3 p-3 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/30 dark:text-red-400"></div>
+				<input type="text" id="rm-ch-input" placeholder="e.g. hmr, bbb" class="w-full bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-3" />
+				<button id="rm-ch-btn" class="w-full px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition-colors">Remove Channels</button>
+			</div>
+		</div>
+
 		<!-- Create Invite -->
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-			<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Create Invite Link</h3>
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5">
+			<div class="flex items-center gap-2 mb-4">
+				<span class="flex items-center justify-center h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+				</span>
+				<h3 class="text-base font-bold text-gray-900 dark:text-white">Create Invite Link</h3>
+			</div>
 			<div id="invite-success" class="hidden mb-3 p-3 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/30 dark:text-green-400"></div>
 			<div id="invite-error" class="hidden mb-3 p-3 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/30 dark:text-red-400"></div>
 			<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -36,10 +75,9 @@
 					</select>
 				</div>
 				<div class="flex items-end">
-					<button id="create-invite-btn" class="w-full px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">Generate Invite</button>
+					<button id="create-invite-btn" class="w-full px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors">Generate Invite</button>
 				</div>
 			</div>
-			<!-- Generated link display -->
 			<div id="invite-link-box" class="hidden mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
 				<p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Share this link (expires in 7 days):</p>
 				<div class="flex items-center gap-2">
@@ -50,11 +88,11 @@
 		</div>
 
 		<!-- Existing Invites -->
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-			<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Invite Links</h3>
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5">
+			<h3 class="text-base font-bold text-gray-900 dark:text-white mb-4">Invite Links</h3>
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-					<thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+					<thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 rounded-lg">
 						<tr>
 							<th class="px-4 py-3">Email</th>
 							<th class="px-4 py-3">Role</th>
@@ -72,11 +110,11 @@
 		</div>
 
 		<!-- Existing Accounts -->
-		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-			<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">User Accounts</h3>
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 p-5">
+			<h3 class="text-base font-bold text-gray-900 dark:text-white mb-4">User Accounts</h3>
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-					<thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+					<thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 rounded-lg">
 						<tr>
 							<th class="px-4 py-3">Email</th>
 							<th class="px-4 py-3">Display Name</th>
@@ -97,6 +135,10 @@
 	const API_BASE = 'https://api.epmarketingandresearch.com';
 	let adminPin = '';
 
+	function cleanChannelList(list: string): string[] {
+		return list.replace(/\$/g, '').toLowerCase().replace(/\s/g, '').split(',').filter(Boolean);
+	}
+
 	const pinGate = document.getElementById('pin-gate')!;
 	const adminContent = document.getElementById('admin-content')!;
 	const pinInput = document.getElementById('admin-pin') as HTMLInputElement;
@@ -107,7 +149,6 @@
 	pinSubmit.addEventListener('click', async () => {
 		adminPin = pinInput.value;
 		pinError.classList.add('hidden');
-
 		try {
 			const resp = await fetch(`${API_BASE}/api/admin/accounts?pin=${adminPin}`);
 			if (!resp.ok) {
@@ -124,12 +165,75 @@
 			pinError.classList.remove('hidden');
 		}
 	});
+	pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') pinSubmit.click(); });
 
-	pinInput.addEventListener('keydown', (e) => {
-		if (e.key === 'Enter') pinSubmit.click();
+	// ─── Add Channels ────────────────────────────────────────────────────────────
+	const addChBtn = document.getElementById('add-ch-btn')!;
+	addChBtn.addEventListener('click', async () => {
+		const input = (document.getElementById('add-ch-input') as HTMLInputElement).value;
+		const success = document.getElementById('add-ch-success')!;
+		const error = document.getElementById('add-ch-error')!;
+		success.classList.add('hidden');
+		error.classList.add('hidden');
+
+		const channels = cleanChannelList(input);
+		if (channels.length === 0) { error.textContent = 'Enter at least one channel'; error.classList.remove('hidden'); return; }
+
+		try {
+			const resp = await fetch(`${API_BASE}/api/addChannels`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ channels, pin: adminPin }),
+			});
+			if (resp.ok) {
+				const data = await resp.json();
+				success.textContent = `Added ${data.channels.length} channel(s)`;
+				success.classList.remove('hidden');
+				(document.getElementById('add-ch-input') as HTMLInputElement).value = '';
+			} else {
+				error.textContent = await resp.text();
+				error.classList.remove('hidden');
+			}
+		} catch {
+			error.textContent = 'Request failed';
+			error.classList.remove('hidden');
+		}
 	});
 
-	// Create invite
+	// ─── Remove Channels ─────────────────────────────────────────────────────────
+	const rmChBtn = document.getElementById('rm-ch-btn')!;
+	rmChBtn.addEventListener('click', async () => {
+		const input = (document.getElementById('rm-ch-input') as HTMLInputElement).value;
+		const success = document.getElementById('rm-ch-success')!;
+		const error = document.getElementById('rm-ch-error')!;
+		success.classList.add('hidden');
+		error.classList.add('hidden');
+
+		const channels = cleanChannelList(input);
+		if (channels.length === 0) { error.textContent = 'Enter at least one channel'; error.classList.remove('hidden'); return; }
+
+		try {
+			const resp = await fetch(`${API_BASE}/api/removeChannels`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ channels, pin: adminPin }),
+			});
+			if (resp.ok) {
+				const data = await resp.json();
+				success.textContent = `Removed ${data.removed?.length || channels.length} channel(s)`;
+				success.classList.remove('hidden');
+				(document.getElementById('rm-ch-input') as HTMLInputElement).value = '';
+			} else {
+				error.textContent = await resp.text();
+				error.classList.remove('hidden');
+			}
+		} catch {
+			error.textContent = 'Request failed';
+			error.classList.remove('hidden');
+		}
+	});
+
+	// ─── Create invite ───────────────────────────────────────────────────────────
 	const createBtn = document.getElementById('create-invite-btn')!;
 	const inviteSuccess = document.getElementById('invite-success')!;
 	const inviteError = document.getElementById('invite-error')!;
@@ -141,10 +245,8 @@
 		inviteSuccess.classList.add('hidden');
 		inviteError.classList.add('hidden');
 		inviteLinkBox.classList.add('hidden');
-
 		const email = (document.getElementById('invite-email') as HTMLInputElement).value;
 		const role = (document.getElementById('invite-role') as HTMLSelectElement).value;
-
 		try {
 			const resp = await fetch(`${API_BASE}/api/admin/invites`, {
 				method: 'POST',
@@ -152,23 +254,14 @@
 				body: JSON.stringify({ pin: Number(adminPin), email: email || null, role }),
 			});
 			const data = await resp.json();
-			if (!resp.ok) {
-				inviteError.textContent = data.error || 'Failed to create invite';
-				inviteError.classList.remove('hidden');
-				return;
-			}
-
+			if (!resp.ok) { inviteError.textContent = data.error || 'Failed'; inviteError.classList.remove('hidden'); return; }
 			const signupUrl = `${window.location.origin}/authentication/sign-up?invite=${data.invite_token}`;
 			inviteLinkInput.value = signupUrl;
 			inviteLinkBox.classList.remove('hidden');
 			inviteSuccess.textContent = `Invite created${email ? ` for ${email}` : ''} (expires ${new Date(data.expires_at).toLocaleDateString()})`;
 			inviteSuccess.classList.remove('hidden');
-
 			loadInvites();
-		} catch {
-			inviteError.textContent = 'Failed to create invite';
-			inviteError.classList.remove('hidden');
-		}
+		} catch { inviteError.textContent = 'Failed to create invite'; inviteError.classList.remove('hidden'); }
 	});
 
 	copyBtn.addEventListener('click', () => {
@@ -178,7 +271,7 @@
 		setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
 	});
 
-	// Load invites table
+	// ─── Load invites ────────────────────────────────────────────────────────────
 	async function loadInvites() {
 		const tbody = document.getElementById('invites-table-body')!;
 		try {
@@ -202,8 +295,6 @@
 					<td class="px-4 py-3">${!inv.used && !isExpired ? `<button class="copy-invite-link text-blue-600 hover:underline dark:text-blue-400 text-xs" data-url="${signupUrl}">Copy link</button>` : '—'}</td>
 				</tr>`;
 			}).join('');
-
-			// Attach copy handlers
 			tbody.querySelectorAll('.copy-invite-link').forEach((btn) => {
 				btn.addEventListener('click', () => {
 					const url = (btn as HTMLElement).getAttribute('data-url') || '';
@@ -212,12 +303,10 @@
 					setTimeout(() => { (btn as HTMLElement).textContent = 'Copy link'; }, 2000);
 				});
 			});
-		} catch {
-			tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-red-400">Failed to load invites</td></tr>';
-		}
+		} catch { tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-red-400">Failed to load invites</td></tr>'; }
 	}
 
-	// Load accounts table
+	// ─── Load accounts ───────────────────────────────────────────────────────────
 	async function loadAccounts() {
 		const tbody = document.getElementById('accounts-table-body')!;
 		try {
@@ -235,8 +324,6 @@
 					<td class="px-4 py-3">${new Date(acc.created_at).toLocaleDateString()}</td>
 				</tr>`;
 			}).join('');
-		} catch {
-			tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-red-400">Failed to load accounts</td></tr>';
-		}
+		} catch { tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-red-400">Failed to load accounts</td></tr>'; }
 	}
 </script>
