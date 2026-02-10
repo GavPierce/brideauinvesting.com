@@ -720,7 +720,8 @@ const server = Bun.serve({
           FROM visits
           JOIN channels ON visits.channel_id = channels.id
           WHERE visits.user_id = (SELECT id FROM users WHERE public_id = ?)
-          ORDER BY visits.timestamp DESC;
+          ORDER BY visits.timestamp DESC
+          LIMIT 200;
         `;
         params = [publicId];
       } else if (userIdParam) {
@@ -730,7 +731,8 @@ const server = Bun.serve({
           FROM visits
           JOIN channels ON visits.channel_id = channels.id
           WHERE visits.user_id = ?
-          ORDER BY visits.timestamp DESC;
+          ORDER BY visits.timestamp DESC
+          LIMIT 200;
         `;
         params = [Number(userIdParam)];
       } else if (userName) {
@@ -740,7 +742,8 @@ const server = Bun.serve({
           FROM visits
           JOIN channels ON visits.channel_id = channels.id
           WHERE visits.user_id IN (SELECT id FROM users WHERE name = ?)
-          ORDER BY visits.timestamp DESC;
+          ORDER BY visits.timestamp DESC
+          LIMIT 200;
         `;
         params = [userName];
       } else {
@@ -1134,20 +1137,23 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/stats/overview") {
-      const totalUsers = db.query(`SELECT COUNT(*) as count FROM users`).get() as any;
-      const onlineUsers = db.query(`SELECT COUNT(*) as count FROM users WHERE online = true`).get() as any;
-      const totalChannels = db.query(`SELECT COUNT(*) as count FROM channels`).get() as any;
-      const totalVisits = db.query(`SELECT COUNT(*) as count FROM visits`).get() as any;
-      const visitsToday = db.query(`SELECT COUNT(*) as count FROM visits WHERE timestamp >= datetime('now', '-1 day')`).get() as any;
-      const visitsThisWeek = db.query(`SELECT COUNT(*) as count FROM visits WHERE timestamp >= datetime('now', '-7 days')`).get() as any;
+      const stats = db.query(`
+        SELECT
+          (SELECT COUNT(*) FROM users) AS totalUsers,
+          (SELECT COUNT(*) FROM users WHERE online = true) AS onlineUsers,
+          (SELECT COUNT(*) FROM channels) AS totalChannels,
+          (SELECT COUNT(*) FROM visits) AS totalVisits,
+          (SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-1 day')) AS visitsToday,
+          (SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')) AS visitsThisWeek
+      `).get() as any;
 
       return new Response(JSON.stringify({
-        totalUsers: totalUsers?.count || 0,
-        onlineUsers: onlineUsers?.count || 0,
-        totalChannels: totalChannels?.count || 0,
-        totalVisits: totalVisits?.count || 0,
-        visitsToday: visitsToday?.count || 0,
-        visitsThisWeek: visitsThisWeek?.count || 0,
+        totalUsers: stats?.totalUsers || 0,
+        onlineUsers: stats?.onlineUsers || 0,
+        totalChannels: stats?.totalChannels || 0,
+        totalVisits: stats?.totalVisits || 0,
+        visitsToday: stats?.visitsToday || 0,
+        visitsThisWeek: stats?.visitsThisWeek || 0,
       }), {
         headers: {
           "Content-Type": "application/json",

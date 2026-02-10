@@ -74,11 +74,14 @@ function formatDuration(ms: number): string {
 	return `${mins}m ${remSecs}s`;
 }
 
-// ─── Fetch channels list ─────────────────────────────────────────────────────
-let responseData = await fetch(`${API_BASE}/api/getChannels`);
-let channelObject = await responseData.json() as { channels: string[] };
-let channels = channelObject.channels as string[];
-channels.sort();
+// ─── Fetch channels list (non-blocking) ─────────────────────────────────────
+let channels: string[] = [];
+const channelsReady = fetch(`${API_BASE}/api/getChannels`)
+	.then(r => r.json())
+	.then((obj: { channels: string[] }) => {
+		channels = obj.channels.sort();
+		return channels;
+	});
 
 // ─── 1. Stats Overview Cards ─────────────────────────────────────────────────
 async function loadStatsOverview() {
@@ -345,7 +348,11 @@ async function renderUserVisitsByQuery(query: { public_id?: string; userId?: num
 }
 
 // ─── 5. Channel Visits Panel ─────────────────────────────────────────────────
-if (document.getElementById('channel-tabs1')) {
+async function initChannelVisitsPanel() {
+	if (!document.getElementById('channel-tabs1')) return;
+
+	await channelsReady;
+
 	let currentPage = 1;
 	const limit = 100;
 	let loading = false;
@@ -407,7 +414,7 @@ if (document.getElementById('channel-tabs1')) {
 	}
 
 	let selectedChannel = channels[0] as string;
-	await loadVisits(selectedChannel, currentPage);
+	loadVisits(selectedChannel, currentPage);
 
 	visitsContainer?.addEventListener('scroll', async () => {
 		if (visitsContainer.scrollTop + visitsContainer.clientHeight >= visitsContainer.scrollHeight - 100 && !loading) {
@@ -425,7 +432,11 @@ if (document.getElementById('channel-tabs1')) {
 }
 
 // ─── 6. Channel Users Panel ──────────────────────────────────────────────────
-if (document.getElementById('channel-tabs2')) {
+async function initChannelUsersPanel() {
+	if (!document.getElementById('channel-tabs2')) return;
+
+	await channelsReady;
+
 	const select = document.getElementById('channel-tabs2') as HTMLSelectElement;
 	const channelList = document.getElementById('channel-list');
 	const faqContainer = document.getElementById('faq');
@@ -482,7 +493,7 @@ if (document.getElementById('channel-tabs2')) {
 	}
 
 	let selectedChannel = channels[0] as string;
-	await loadVisits(selectedChannel);
+	loadVisits(selectedChannel);
 
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
@@ -499,6 +510,9 @@ if (document.getElementById('channel-tabs2')) {
 		}
 	});
 }
+
+// ─── Fire panels in parallel ────────────────────────────────────────────────
+Promise.all([initChannelVisitsPanel(), initChannelUsersPanel()]);
 
 // ─── 7. User Search Panel ────────────────────────────────────────────────────
 if (document.getElementById('user-input')) {
