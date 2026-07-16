@@ -247,12 +247,22 @@ function isValidChannelName(channel: any): boolean {
   return channel != null && typeof channel === 'string' && channel.trim() !== '';
 }
 
+// CEO.ca online-users API (override via CEO_API_BASE_URL env var if needed)
+const CEO_API_BASE_URL = (process.env.CEO_API_BASE_URL ?? "https://api.ceo.ca").replace(/\/$/, "");
+
+function isTlsCertError(error: any): boolean {
+  const msg = error?.message ?? "";
+  const code = error?.cause?.code ?? error?.code ?? "";
+  return msg.includes("ERR_TLS_CERT") || code.includes("ERR_TLS_CERT") || msg.includes("certificate");
+}
+
 // Simulate fetching online users from the API (this should be called periodically)
 // Use a Set for O(1) lookups and automatic deduplication
 let activeUserIds: Set<number> = new Set();
 const MAX_ACTIVE_USERS = 10000; // Prevent unbounded memory growth
+let tlsFailureDetected = false;
 
-async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boolean }> {
+async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boolean; tlsError?: boolean }> {
   // Validate channel name before processing
   if (!isValidChannelName(channelName)) {
     return { rateLimited: false }; // Silently skip invalid channels
@@ -264,7 +274,7 @@ async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boo
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
     const response = await fetch(
-      `https://new-api.ceo.ca/api/channels/online_users?channel=${encodeURIComponent(channelName)}`,
+      `${CEO_API_BASE_URL}/api/channels/online_users?channel=${encodeURIComponent(channelName)}`,
       { signal: controller.signal }
     );
 
@@ -302,6 +312,15 @@ async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boo
   } catch (error: any) {
     if (error.name === 'AbortError') {
       console.error(`[${new Date().toISOString()}] ⏰ Timeout: ${channelName}`);
+    } else if (isTlsCertError(error)) {
+      if (!tlsFailureDetected) {
+        tlsFailureDetected = true;
+        console.error(
+          `[${new Date().toISOString()}] 🔒 TLS error fetching CEO API at ${CEO_API_BASE_URL} — aborting remaining channels. ` +
+          `Set CEO_API_BASE_URL if the hostname changed. Error: ${error.message}`
+        );
+      }
+      return { rateLimited: false, tlsError: true };
     } else {
       console.error(`[${new Date().toISOString()}] ❌ Error: ${channelName} - ${error.message}`);
     }
@@ -1391,8 +1410,9 @@ setInterval(async () => {
   }
 
   isFetchingUsers = true;
+  tlsFailureDetected = false;
   try {
-    console.log(`[${new Date().toISOString()}] 🔄 Starting periodic user fetch...`);
+    console.log(`[${new Date().toISOString()}] 🔄 Starting periodic user fetch (CEO API: ${CEO_API_BASE_URL})...`);
     const startTime = Date.now();
     lastCycleStarted = new Date().toISOString();
     rateLimitsHitLastCycle = 0;
@@ -1436,6 +1456,11 @@ setInterval(async () => {
 
       const results = await Promise.all(batch.map(channel => fetchAndLogUsers(channel)));
       channelsProcessed += batch.length;
+
+      if (results.some(r => r.tlsError)) {
+        console.error(`[${new Date().toISOString()}] ❌ Stopping scrape cycle due to TLS errors`);
+        break;
+      }
 
       // Adaptive backoff: if any request in this batch was rate-limited, pause longer
       const rateLimitedCount = results.filter(r => r.rateLimited).length;

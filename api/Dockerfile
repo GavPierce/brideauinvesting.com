@@ -1,8 +1,8 @@
 # Use a basic Linux image (Debian) so we can run the smart installer
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # Install necessary tools
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl unzip ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Install Bun via the official script
 # This script automatically detects your CPU (No AVX2) and installs the "baseline" version
