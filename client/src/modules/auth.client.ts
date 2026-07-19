@@ -1,4 +1,4 @@
-const API_BASE = 'https://api.epmarketingandresearch.com';
+const API_BASE = '';
 const TOKEN_KEY = 'ep_session_token';
 const ACCOUNT_KEY = 'ep_account';
 

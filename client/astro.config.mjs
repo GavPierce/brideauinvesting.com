@@ -7,9 +7,7 @@ const DEV_PORT = 2121;
 
 // https://astro.build/config
 export default defineConfig({
-	site: process.env.CI
-		? 'https://themesberg.github.io'
-		: `http://localhost:${DEV_PORT}`,
+	site: process.env.SITE_URL ?? 'https://epmarketingandresearch.com',
 	base: '/',
 	// output: 'server',
 

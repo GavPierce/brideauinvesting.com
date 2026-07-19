@@ -25,7 +25,7 @@ RUN bun install
 COPY . .
 
 # Expose the port (Change 3000 if your server.serve port is different)
-EXPOSE 3000
+EXPOSE 3008
 
 # Start the app
 CMD ["bun", "index.ts"]

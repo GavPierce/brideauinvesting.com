@@ -3,6 +3,11 @@ import { Database } from "bun:sqlite";
 // Initialize in-memory SQLite database (you can replace ":memory:" with a file path for persistent storage)
 const db = new Database("./data/database.db");
 
+// Keep readers responsive while the scraper writes.
+db.run(`PRAGMA journal_mode = WAL`);
+db.run(`PRAGMA busy_timeout = 5000`);
+db.run(`PRAGMA synchronous = NORMAL`);
+
 // Initialize tables
 db.run(`
   CREATE TABLE IF NOT EXISTS channels (
@@ -29,6 +34,16 @@ CREATE TABLE IF NOT EXISTS visits (
   FOREIGN KEY (user_id) REFERENCES users(id),
   FOREIGN KEY (channel_id) REFERENCES channels(id)
 );
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS channel_visit_daily (
+    day TEXT NOT NULL,
+    channel_id INTEGER NOT NULL,
+    visit_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, channel_id),
+    FOREIGN KEY (channel_id) REFERENCES channels(id)
+  );
 `);
 
 // ─── Auth tables ─────────────────────────────────────────────────────────────
@@ -76,6 +91,21 @@ db.run(`CREATE INDEX IF NOT EXISTS idx_visits_channel_id ON visits(channel_id)`)
 db.run(`CREATE INDEX IF NOT EXISTS idx_visits_timestamp ON visits(timestamp)`);
 db.run(`CREATE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id)`);
 db.run(`CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_visits_channel_timestamp ON visits(channel_id, timestamp DESC)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_visits_channel_user_timestamp ON visits(channel_id, user_id, timestamp DESC)`);
+db.run(`CREATE INDEX IF NOT EXISTS idx_users_online ON users(online) WHERE online = true`);
+
+// Rebuild only the range used by the dashboard. The timestamp index keeps this
+// bounded even when the raw table contains many millions of rows.
+db.run(`DELETE FROM channel_visit_daily WHERE day >= date('now', '-31 days')`);
+db.run(`
+  INSERT INTO channel_visit_daily (day, channel_id, visit_count)
+  SELECT date(timestamp), channel_id, COUNT(*)
+  FROM visits
+  WHERE timestamp >= datetime('now', '-31 days')
+  GROUP BY date(timestamp), channel_id
+`);
+
 
 // ─── Auth helpers ────────────────────────────────────────────────────────────
 function generateToken(): string {
@@ -135,7 +165,13 @@ const stmtInsertUser = db.query(`INSERT OR IGNORE INTO users (public_id, name, o
 const stmtSelectUser = db.query<any, any>(`SELECT id FROM users WHERE public_id = ?`);
 const stmtLastVisit = db.query<any, any>(`SELECT timestamp FROM visits WHERE user_id = ? AND channel_id = ? ORDER BY timestamp DESC LIMIT 1`);
 const stmtInsertVisit = db.query(`INSERT INTO visits (user_id, channel_id, timestamp) VALUES (?, ?, ?)`);
-const stmtMarkOnline = db.query(`UPDATE users SET online = true WHERE id = ?`);
+const stmtMarkOnline = db.query(`UPDATE users SET online = true WHERE id = ? AND online = false`);
+const stmtUpsertDaily = db.query(`
+  INSERT INTO channel_visit_daily (day, channel_id, visit_count) VALUES (?, ?, 1)
+  ON CONFLICT(day, channel_id)
+  DO UPDATE SET visit_count = visit_count + 1
+`);
+
 
 // In-memory caches to avoid repeated DB lookups (cleared each scrape cycle)
 const channelIdCache = new Map<string, number>();
@@ -191,6 +227,7 @@ function logVisit(
   // Only log a new visit if the last visit was more than the threshold ago
   if (shouldLogVisit) {
     stmtInsertVisit.run(user_id, channel_id, timestamp);
+    stmtUpsertDaily.run(timestamp.slice(0, 10), channel_id);
   } else {
   }
 
@@ -261,6 +298,19 @@ function isTlsCertError(error: any): boolean {
 let activeUserIds: Set<number> = new Set();
 const MAX_ACTIVE_USERS = 10000; // Prevent unbounded memory growth
 let tlsFailureDetected = false;
+const persistFetchedUsers = db.transaction((channelName: string, users: any[]) => {
+  const timestamp = new Date().toISOString();
+  const channel_id = getOrCreateChannelId(channelName);
+
+  for (const user of users) {
+    const user_id = getOrCreateUserId(user.public_id, user.name || "Unknown");
+    logVisit(user_id, channel_id, timestamp);
+    if (activeUserIds.size < MAX_ACTIVE_USERS) {
+      activeUserIds.add(user_id);
+    }
+  }
+});
+
 
 async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boolean; tlsError?: boolean }> {
   // Validate channel name before processing
@@ -297,18 +347,7 @@ async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boo
       return { rateLimited: false };
     }
 
-    const timestamp = new Date().toISOString();
-    // Hoist channel ID lookup outside the per-user loop (same for every user)
-    const channel_id = getOrCreateChannelId(channelName);
-
-    for (const user of data.users) {
-      const user_id = getOrCreateUserId(user.public_id, user.name || "Unknown");
-      logVisit(user_id, channel_id, timestamp);
-      // Add to Set with size limit to prevent memory leaks
-      if (activeUserIds.size < MAX_ACTIVE_USERS) {
-        activeUserIds.add(user_id);
-      }
-    }
+    persistFetchedUsers(channelName, data.users);
   } catch (error: any) {
     if (error.name === 'AbortError') {
       console.error(`[${new Date().toISOString()}] ⏰ Timeout: ${channelName}`);
@@ -329,6 +368,9 @@ async function fetchAndLogUsers(channelName: string): Promise<{ rateLimited: boo
 }
 
 // Serve an HTML page displaying user visit history and online status
+const DASHBOARD_CACHE_TTL_MS = 30_000;
+const dashboardCache = new Map<number, { expiresAt: number; payload: any }>();
+
 const server = Bun.serve({
   port: 3008,
   async fetch(req) {
@@ -374,36 +416,6 @@ const server = Bun.serve({
       });
     }
 
-    if (url.pathname === "/api/visits/chageDates") {
-      // add 100 random visits, 50 for yesterday and 50 for tomorrow, randomly for all channels and users
-
-      for (let i = 0; i < 2000; i++) {
-        const randomChannel = "gshr";
-        const randomUser = Math.floor(Math.random() * 10) + 1;
-        const randomDate = new Date();
-        let randomNumberBetweenZeroAnd7 = Math.floor(Math.random() * 7);
-
-        // spread it evenly acroos the last 7 days
-        randomDate.setDate(randomDate.getDate() - randomNumberBetweenZeroAnd7);
-
-        const randomTimestamp = randomDate.toISOString();
-        logVisit(
-          randomUser,
-          getOrCreateChannelId(randomChannel),
-          randomTimestamp
-        );
-      }
-
-      return new Response(JSON.stringify({}), {
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // Allow all origins
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
-          "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
-        },
-      });
-    }
-
     if (url.pathname === "/api/visits/totalWeekly") {
       const query = `
       SELECT COUNT(*) as count
@@ -415,22 +427,6 @@ const server = Bun.serve({
       const data = db.query(query).get();
 
       return new Response(JSON.stringify(data), {
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // Allow all origins
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Specify allowed methods
-          "Access-Control-Allow-Headers": "Content-Type", // Specify allowed headers
-        },
-      });
-    }
-    if (url.pathname === "/api/visits/clearFutureVisits") {
-      const query = `
-      DELETE FROM visits
-      WHERE timestamp >= datetime('now', 'localtime', '+1 day');
-      `;
-      // console log how many visits were deleted
-      let data = db.query(query).all();
-      return new Response(JSON.stringify({ data }), {
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*", // Allow all origins
@@ -521,15 +517,15 @@ const server = Bun.serve({
       // Determine the channel with the largest week-over-week delta, with pct change for context
       const query = `
         WITH this_week AS (
-          SELECT channel_id, COUNT(*) AS cnt
-          FROM visits
-          WHERE timestamp >= datetime('now', '-7 days')
+          SELECT channel_id, SUM(visit_count) AS cnt
+          FROM channel_visit_daily
+          WHERE day >= date('now', '-6 days')
           GROUP BY channel_id
         ), last_week AS (
-          SELECT channel_id, COUNT(*) AS cnt
-          FROM visits
-          WHERE timestamp >= datetime('now', '-14 days')
-            AND timestamp < datetime('now', '-7 days')
+          SELECT channel_id, SUM(visit_count) AS cnt
+          FROM channel_visit_daily
+          WHERE day >= date('now', '-13 days')
+            AND day < date('now', '-6 days')
           GROUP BY channel_id
         )
         SELECT 
@@ -555,15 +551,15 @@ const server = Bun.serve({
       } catch (e) {
         const fallbackQuery = `
           WITH this_week AS (
-            SELECT channel_id, COUNT(*) AS cnt
-            FROM visits
-            WHERE timestamp >= datetime('now', '-7 days')
+            SELECT channel_id, SUM(visit_count) AS cnt
+            FROM channel_visit_daily
+            WHERE day >= date('now', '-6 days')
             GROUP BY channel_id
           ), last_week AS (
-            SELECT channel_id, COUNT(*) AS cnt
-            FROM visits
-            WHERE timestamp >= datetime('now', '-14 days')
-              AND timestamp < datetime('now', '-7 days')
+            SELECT channel_id, SUM(visit_count) AS cnt
+            FROM channel_visit_daily
+            WHERE day >= date('now', '-13 days')
+              AND day < date('now', '-6 days')
             GROUP BY channel_id
           )
           SELECT 
@@ -1048,6 +1044,116 @@ const server = Bun.serve({
       }
     }
 
+    if (url.pathname === "/api/dashboard/initial") {
+      const days = Math.min(30, Math.max(1, parseInt(url.searchParams.get("days") || "7")));
+      const cached = dashboardCache.get(days);
+      if (cached && cached.expiresAt > Date.now()) {
+        return new Response(JSON.stringify(cached.payload), {
+          headers: {
+            ...corsHeaders(),
+            "Cache-Control": "public, max-age=30, stale-while-revalidate=300",
+          },
+        });
+      }
+
+      const channels = (JSON.parse(await Bun.file("channels.json").text()) as string[])
+        .filter(isValidChannelName)
+        .sort();
+      const stats = db.query(`
+        SELECT
+          (SELECT COUNT(*) FROM users) AS totalUsers,
+          (SELECT COUNT(*) FROM users WHERE online = true) AS onlineUsers,
+          (SELECT COUNT(*) FROM channels) AS totalChannels,
+          (SELECT COALESCE(seq, 0) FROM sqlite_sequence WHERE name = 'visits') AS totalVisits,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day = date('now')) AS visitsToday,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-6 days')) AS visitsThisWeek
+      `).get() as any;
+      const trending = db.query(`
+        WITH this_week AS (
+          SELECT channel_id, SUM(visit_count) AS cnt
+          FROM channel_visit_daily
+          WHERE day >= date('now', '-6 days')
+          GROUP BY channel_id
+        ), last_week AS (
+          SELECT channel_id, SUM(visit_count) AS cnt
+          FROM channel_visit_daily
+          WHERE day >= date('now', '-13 days') AND day < date('now', '-6 days')
+          GROUP BY channel_id
+        )
+        SELECT c.name AS channel,
+          COALESCE(t.cnt, 0) AS current,
+          COALESCE(l.cnt, 0) AS previous,
+          COALESCE(t.cnt, 0) - COALESCE(l.cnt, 0) AS delta,
+          CASE WHEN COALESCE(l.cnt, 0) = 0 THEN NULL
+            ELSE ROUND((COALESCE(t.cnt, 0) - COALESCE(l.cnt, 0)) * 100.0 / l.cnt, 2)
+          END AS pct_change
+        FROM channels c
+        LEFT JOIN this_week t ON c.id = t.channel_id
+        LEFT JOIN last_week l ON c.id = l.channel_id
+        ORDER BY delta DESC
+        LIMIT 1
+      `).get();
+      const topChannels = db.query(`
+        SELECT c.name AS channel, SUM(d.visit_count) AS visit_count
+        FROM channel_visit_daily d
+        JOIN channels c ON d.channel_id = c.id
+        WHERE d.day >= date('now', '-' || (? - 1) || ' days')
+        GROUP BY d.channel_id
+        ORDER BY visit_count DESC
+        LIMIT 15
+      `).all(days);
+      const initialChannel = channels[0] || null;
+      const visits = initialChannel ? db.query(`
+        SELECT v.*, u.name, u.online
+        FROM visits v
+        JOIN users u ON v.user_id = u.id
+        WHERE v.channel_id = (SELECT id FROM channels WHERE name = ?)
+        ORDER BY v.timestamp DESC
+        LIMIT 50
+      `).all(initialChannel) : [];
+      const users = initialChannel ? db.query(`
+        SELECT u.*, v.last_visit
+        FROM users u
+        JOIN (
+          SELECT user_id, MAX(timestamp) AS last_visit
+          FROM visits
+          WHERE channel_id = (SELECT id FROM channels WHERE name = ?)
+          GROUP BY user_id
+        ) v ON u.id = v.user_id
+        ORDER BY v.last_visit DESC
+        LIMIT 50
+      `).all(initialChannel) : [];
+      const payload = {
+        channels,
+        stats,
+        weekly: { count: stats?.visitsThisWeek || 0 },
+        trending: trending || {},
+        topChannels,
+        initialChannel,
+        visits,
+        users,
+        scrapeStatus: {
+          isFetching: isFetchingUsers,
+          lastCycleStarted,
+          lastCycleCompleted,
+          lastCycleDurationMs,
+          lastCycleChannelCount,
+          totalChannels: lastCycleTotalChannels,
+          cycleCount: scrapesCycleCount,
+          rateLimitsHit: rateLimitsHitLastCycle,
+          intervalMs: SCRAPE_INTERVAL_MS,
+        },
+      };
+
+      dashboardCache.set(days, { expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS, payload });
+      return new Response(JSON.stringify(payload), {
+        headers: {
+          ...corsHeaders(),
+          "Cache-Control": "public, max-age=30, stale-while-revalidate=300",
+        },
+      });
+    }
+
     if (url.pathname === "/api/getChannels") {
       try {
         console.log(`[${new Date().toISOString()}] [${requestId}] 📖 Reading channels.json...`);
@@ -1120,7 +1226,7 @@ const server = Bun.serve({
         totalChannels: lastCycleTotalChannels,
         cycleCount: scrapesCycleCount,
         rateLimitsHit: rateLimitsHitLastCycle,
-        intervalMs: 300000,
+        intervalMs: SCRAPE_INTERVAL_MS,
       };
       return new Response(JSON.stringify(status), {
         headers: {
@@ -1136,11 +1242,11 @@ const server = Bun.serve({
       const days = parseInt(url.searchParams.get("days") || "7");
       const limit = parseInt(url.searchParams.get("limit") || "10");
       const query = `
-        SELECT c.name AS channel, COUNT(*) AS visit_count
-        FROM visits v
-        JOIN channels c ON v.channel_id = c.id
-        WHERE v.timestamp >= datetime('now', '-${days} days')
-        GROUP BY v.channel_id
+        SELECT c.name AS channel, SUM(d.visit_count) AS visit_count
+        FROM channel_visit_daily d
+        JOIN channels c ON d.channel_id = c.id
+        WHERE d.day >= date('now', '-${Math.max(days - 1, 0)} days')
+        GROUP BY d.channel_id
         ORDER BY visit_count DESC
         LIMIT ?;
       `;
@@ -1161,9 +1267,9 @@ const server = Bun.serve({
           (SELECT COUNT(*) FROM users) AS totalUsers,
           (SELECT COUNT(*) FROM users WHERE online = true) AS onlineUsers,
           (SELECT COUNT(*) FROM channels) AS totalChannels,
-          (SELECT COUNT(*) FROM visits) AS totalVisits,
-          (SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-1 day')) AS visitsToday,
-          (SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')) AS visitsThisWeek
+          (SELECT COALESCE(seq, 0) FROM sqlite_sequence WHERE name = 'visits') AS totalVisits,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day = date('now')) AS visitsToday,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-6 days')) AS visitsThisWeek
       `).get() as any;
 
       return new Response(JSON.stringify({
@@ -1402,8 +1508,11 @@ let isFetchingUsers = false;
 
 // Helper to sleep between batches (reduces CPU pressure)
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const SCRAPE_INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS ?? 300000);
+const RAW_VISIT_RETENTION_DAYS = Math.max(0, Number(process.env.RAW_VISIT_RETENTION_DAYS ?? 0));
 
-setInterval(async () => {
+
+async function runScrapeCycle() {
   if (isFetchingUsers) {
     console.warn(`[${new Date().toISOString()}] ⚠️  Skipping periodic fetch - previous fetch still in progress`);
     return;
@@ -1440,8 +1549,6 @@ setInterval(async () => {
     const batchDelayMs = 1000;  // 1 second delay between batches
     const rateLimitBackoffMs = 5000; // Extra pause if we get a 429
 
-    // Wrap all DB writes in a single transaction for the entire cycle
-    db.run("BEGIN");
 
     let channelsProcessed = 0;
     for (let i = 0; i < channels.length; i += batchSize) {
@@ -1476,14 +1583,19 @@ setInterval(async () => {
       }
     }
 
-    db.run("COMMIT");
 
-    updateOnlineStatus(activeUserIds);
+    db.transaction(() => updateOnlineStatus(activeUserIds))();
     activeUserIds.clear();  // Use Set.clear() for proper cleanup
 
     // Clear in-memory caches at the end of each cycle to bound memory
     channelIdCache.clear();
     userIdCache.clear();
+
+    if (RAW_VISIT_RETENTION_DAYS > 0) {
+      db.query(`DELETE FROM visits WHERE timestamp < datetime('now', '-' || ? || ' days')`)
+        .run(RAW_VISIT_RETENTION_DAYS);
+    }
+
 
     const elapsed = Date.now() - startTime;
     lastCycleCompleted = new Date().toISOString();
@@ -1492,13 +1604,20 @@ setInterval(async () => {
     scrapesCycleCount++;
     console.log(`[${new Date().toISOString()}] ✅ Completed periodic user fetch in ${elapsed}ms`);
   } catch (error: any) {
-    // Rollback if the transaction is still open
-    try { db.run("ROLLBACK"); } catch (_) {}
     console.error(`[${new Date().toISOString()}] ❌ Error in periodic user fetch:`, error.message, error.stack);
   } finally {
     isFetchingUsers = false;
   }
-}, 300000);  // 5 minutes - gives more breathing room between cycles
+}
+
+async function runScrapeLoop() {
+  while (true) {
+    await runScrapeCycle();
+    await sleep(SCRAPE_INTERVAL_MS);
+  }
+}
+
+setTimeout(() => void runScrapeLoop(), 5000);
 
 console.log(`[${new Date().toISOString()}] 🚀 Server starting...`);
 console.log(`Listening on http://localhost:3008 ...`);
