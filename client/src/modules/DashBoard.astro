@@ -3,6 +3,41 @@
 ---
 
 <div class="max-w-[1600px] mx-auto px-4 sm:px-6 pt-6 pb-10 space-y-8">
+	<header class="space-y-4">
+		<div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+			<div>
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">Audience intelligence</p>
+				<h1 class="mt-1 text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white sm:text-3xl">Research dashboard</h1>
+				<p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Monitor channel activity, audience growth, and scraper health from one workspace.</p>
+			</div>
+			<div class="flex flex-wrap items-center gap-3">
+				<div class="text-right">
+					<p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Data freshness</p>
+					<p id="dashboard-updated" class="text-sm font-medium text-gray-700 dark:text-gray-300" aria-live="polite">Loading latest data...</p>
+				</div>
+				<button id="dashboard-refresh" type="button" class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356m-1.181 9.166a8.25 8.25 0 11-2.19-8.09l3.371 3.916"/></svg>
+					Refresh
+				</button>
+			</div>
+		</div>
+		<div class="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-4">
+			<label for="global-channel-input" class="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Explore a channel</label>
+			<div class="flex flex-col gap-2 sm:flex-row">
+				<div class="relative flex-1">
+					<svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m1.35-5.4a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0Z"/></svg>
+					<input id="global-channel-input" list="global-channel-options" autocomplete="off" placeholder="Type a channel name" class="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-700/60 dark:text-white" />
+					<datalist id="global-channel-options"></datalist>
+				</div>
+				<button id="global-channel-apply" type="button" class="min-h-11 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 dark:focus:ring-offset-gray-800">View channel</button>
+			</div>
+			<p id="global-channel-help" class="mt-2 text-xs text-gray-400 dark:text-gray-500">Choose one channel to update both activity panels.</p>
+		</div>
+		<div id="dashboard-error" class="hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
+			<div class="flex flex-wrap items-center justify-between gap-3"><span>We could not load the latest dashboard data.</span><button id="dashboard-retry" type="button" class="font-bold underline underline-offset-2">Try again</button></div>
+		</div>
+	</header>
+
 
 	<!-- Row 1: Stats Overview — gradient-accent cards -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -16,6 +51,7 @@
 				<div class="min-w-0">
 					<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Visits This Week</p>
 					<p class="mt-1 text-2xl font-extrabold text-gray-900 dark:text-white leading-none" id="stat-visits-week">—</p>
+					<p id="stat-visits-week-change" class="mt-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">Compared with previous 7 days</p>
 				</div>
 			</div>
 		</div>
@@ -30,6 +66,7 @@
 				<div class="min-w-0">
 					<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Visits Today</p>
 					<p class="mt-1 text-2xl font-extrabold text-gray-900 dark:text-white leading-none" id="stat-visits-today">—</p>
+					<p id="stat-visits-today-change" class="mt-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">Compared with yesterday</p>
 				</div>
 			</div>
 		</div>
@@ -45,6 +82,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Users Online</p>
 					<p class="mt-1 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-none" id="stat-online">—</p>
 					<p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500"><span id="stat-total-users">—</span> total</p>
+					<p id="stat-online-share" class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Share of known users</p>
 				</div>
 			</div>
 		</div>
@@ -82,10 +120,16 @@
 	</div>
 
 	<!-- Row 3: Data Explorer — 3-column on desktop -->
+	<div class="flex rounded-xl bg-gray-100 p-1 dark:bg-gray-800 lg:hidden" role="tablist" aria-label="Data explorer">
+		<button type="button" class="explorer-tab flex-1 rounded-lg bg-white px-3 py-2 text-xs font-bold text-blue-700 shadow-sm dark:bg-gray-700 dark:text-blue-300" data-panel="panel-visits" role="tab" aria-selected="true">Visits</button>
+		<button type="button" class="explorer-tab flex-1 rounded-lg px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400" data-panel="panel-users" role="tab" aria-selected="false">Users</button>
+		<button type="button" class="explorer-tab flex-1 rounded-lg px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400" data-panel="panel-search" role="tab" aria-selected="false">Search</button>
+	</div>
+
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
 		<!-- Channel Visits -->
-		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex flex-col overflow-hidden">
+		<div id="panel-visits" class="explorer-panel rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex flex-col overflow-hidden lg:flex" role="tabpanel">
 			<div class="px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-700/60">
 				<div class="flex items-center gap-2 mb-3">
 					<span class="flex items-center justify-center h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
@@ -93,15 +137,16 @@
 					</span>
 					<h3 class="text-sm font-bold text-gray-900 dark:text-white">Channel Visits</h3>
 				</div>
+				<label for="channel-tabs1" class="sr-only">Channel for recent visits</label>
 				<select id="channel-tabs1" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 p-2.5 transition-shadow"></select>
 			</div>
 			<div class="flex-1 overflow-y-auto p-4" id="visits" style="max-height: 28rem;">
-				<ul role="list" id="visits-list" class="space-y-0.5"></ul>
+				<ul role="list" id="visits-list" class="space-y-0.5" aria-live="polite"></ul>
 			</div>
 		</div>
 
 		<!-- Channel Users -->
-		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex flex-col overflow-hidden">
+		<div id="panel-users" class="explorer-panel hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex-col overflow-hidden lg:flex" role="tabpanel">
 			<div class="px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-700/60">
 				<div class="flex items-center gap-2 mb-3">
 					<span class="flex items-center justify-center h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
@@ -109,15 +154,16 @@
 					</span>
 					<h3 class="text-sm font-bold text-gray-900 dark:text-white">Channel Users</h3>
 				</div>
+				<label for="channel-tabs2" class="sr-only">Channel for audience users</label>
 				<select id="channel-tabs2" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 p-2.5 transition-shadow"></select>
 			</div>
 			<div class="flex-1 overflow-y-auto p-4" id="faq" style="max-height: 28rem;">
-				<ul role="list" id="channel-list" class="space-y-0.5"></ul>
+				<ul role="list" id="channel-list" class="space-y-0.5" aria-live="polite"></ul>
 			</div>
 		</div>
 
 		<!-- User Search -->
-		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex flex-col overflow-hidden">
+		<div id="panel-search" class="explorer-panel hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md ring-1 ring-gray-100 dark:ring-gray-700/60 flex-col overflow-hidden lg:flex" role="tabpanel">
 			<div class="px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-700/60">
 				<div class="flex items-center gap-2 mb-3">
 					<span class="flex items-center justify-center h-7 w-7 rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
@@ -125,16 +171,18 @@
 					</span>
 					<h3 class="text-sm font-bold text-gray-900 dark:text-white">User Search</h3>
 				</div>
-				<div class="relative">
+				<label for="user-input" class="sr-only">Search user by handle</label>
+				<div class="relative flex gap-2">
 					<div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
 						<span class="text-gray-400 dark:text-gray-500 text-sm font-bold">@</span>
 					</div>
 					<input id="user-input" placeholder="Search by handle — press Enter" class="pl-8 w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500 p-2.5 transition-shadow" />
+					<button id="user-search-button" type="button" class="absolute bottom-1 right-1 top-1 rounded-md bg-violet-600 px-3 text-xs font-bold text-white transition hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500/40">Search</button>
 				</div>
 			</div>
 			<div class="flex-1 overflow-y-auto p-4" id="about" style="max-height: 28rem;">
 				<div class="text-sm font-medium text-center mb-3" id="user-info"></div>
-				<ul role="list" id="user-list" class="space-y-0.5"></ul>
+				<ul role="list" id="user-list" class="space-y-0.5" aria-live="polite"></ul>
 			</div>
 		</div>
 

@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 
-const API_BASE = '';
+const API_BASE = 'https://api.epmarketingandresearch.com';
 
 type InitialDashboard = {
 	channels: string[];
@@ -19,6 +19,68 @@ const initialDashboardReady = fetch(`${API_BASE}/api/dashboard/initial?days=7`)
 		if (!response.ok) throw new Error(`Dashboard API returned ${response.status}`);
 		return response.json() as Promise<InitialDashboard>;
 	});
+
+const dashboardLoadedAt = new Date();
+
+function showDashboardError() {
+	document.getElementById('dashboard-error')?.classList.remove('hidden');
+	const updated = document.getElementById('dashboard-updated');
+	if (updated) updated.textContent = 'Unable to refresh';
+}
+
+function updateFreshnessLabel() {
+	const updated = document.getElementById('dashboard-updated');
+	if (updated) updated.textContent = `Updated ${timeAgo(dashboardLoadedAt.toISOString())}`;
+}
+
+function reloadDashboard() {
+	const refresh = document.getElementById('dashboard-refresh') as HTMLButtonElement | null;
+	if (refresh) {
+		refresh.disabled = true;
+		refresh.classList.add('opacity-60');
+	}
+	window.location.reload();
+}
+
+document.getElementById('dashboard-refresh')?.addEventListener('click', reloadDashboard);
+document.getElementById('dashboard-retry')?.addEventListener('click', reloadDashboard);
+
+void initialDashboardReady
+	.then(() => {
+		updateFreshnessLabel();
+		setInterval(updateFreshnessLabel, 30000);
+	})
+	.catch(showDashboardError);
+
+function broadcastChannel(channel: string) {
+	const input = document.getElementById('global-channel-input') as HTMLInputElement | null;
+	if (input) input.value = channel.toUpperCase();
+	window.dispatchEvent(new CustomEvent('dashboard-channel-change', { detail: { channel } }));
+}
+
+function initExplorerTabs() {
+	const tabs = document.querySelectorAll<HTMLElement>('.explorer-tab');
+	tabs.forEach((tab) => {
+		tab.addEventListener('click', () => {
+			const targetId = tab.dataset.panel;
+			document.querySelectorAll<HTMLElement>('.explorer-panel').forEach((panel) => {
+				panel.classList.toggle('hidden', panel.id !== targetId);
+				if (panel.id !== targetId) panel.classList.remove('flex');
+				else panel.classList.add('flex');
+			});
+			tabs.forEach((item) => {
+				const active = item === tab;
+
+				item.setAttribute('aria-selected', String(active));
+				item.className = active
+					? 'explorer-tab flex-1 rounded-lg bg-white px-3 py-2 text-xs font-bold text-blue-700 shadow-sm dark:bg-gray-700 dark:text-blue-300'
+					: 'explorer-tab flex-1 rounded-lg px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400';
+			});
+		});
+	});
+}
+
+initExplorerTabs();
 
 // ─── Skeleton loader utilities ───────────────────────────────────────────────
 const skeletonsByList = new Map<HTMLElement, HTMLElement[]>();
@@ -71,6 +133,20 @@ function formatNumber(n: number): string {
 	return n.toLocaleString('en-US');
 }
 
+function comparisonText(current: number, previous: number, label: string): string {
+	if (!previous) return current ? `New activity ${label}` : `No change ${label}`;
+	const change = ((current - previous) / previous) * 100;
+	const sign = change >= 0 ? '+' : '';
+	return `${sign}${change.toFixed(1)}% ${label}`;
+}
+
+function setComparison(id: string, current: number, previous: number, label: string) {
+	const element = document.getElementById(id);
+	if (!element) return;
+	element.textContent = comparisonText(current, previous, label);
+	element.className = `mt-1.5 text-xs font-semibold ${current >= previous ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`;
+}
+
 function timeAgo(isoString: string): string {
 	const diff = Date.now() - new Date(isoString).getTime();
 	const mins = Math.floor(diff / 60000);
@@ -96,6 +172,40 @@ const channelsReady = initialDashboardReady.then((data) => {
 	return channels;
 });
 
+void channelsReady.then((availableChannels) => {
+	const input = document.getElementById('global-channel-input') as HTMLInputElement | null;
+	const options = document.getElementById('global-channel-options');
+	const apply = document.getElementById('global-channel-apply');
+	const help = document.getElementById('global-channel-help');
+	if (!input || !options || !apply) return;
+
+	availableChannels.forEach((channel) => {
+		const option = document.createElement('option');
+		option.value = channel.toUpperCase();
+		options.appendChild(option);
+	});
+	if (availableChannels[0]) input.value = availableChannels[0].toUpperCase();
+
+	const applySelection = () => {
+		const requested = input.value.trim().toLowerCase();
+		const channel = availableChannels.find((item) => item.toLowerCase() === requested);
+		if (!channel) {
+			if (help) {
+				help.textContent = 'Select a channel from the suggestions.';
+				help.className = 'mt-2 text-xs font-medium text-rose-600 dark:text-rose-400';
+			}
+			return;
+		}
+		if (help) {
+			help.textContent = `Showing recent activity for ${channel.toUpperCase()}.`;
+			help.className = 'mt-2 text-xs text-gray-400 dark:text-gray-500';
+		}
+		broadcastChannel(channel);
+	};
+	apply.addEventListener('click', applySelection);
+	input.addEventListener('keydown', (event) => { if (event.key === 'Enter') applySelection(); });
+});
+
 // ─── 1. Stats Overview Cards ─────────────────────────────────────────────────
 async function loadStatsOverview() {
 	try {
@@ -105,6 +215,13 @@ async function loadStatsOverview() {
 		if (el('stat-online')) el('stat-online')!.textContent = formatNumber(stats.onlineUsers);
 		if (el('stat-total-users')) el('stat-total-users')!.textContent = formatNumber(stats.totalUsers);
 		if (el('stat-visits-week')) el('stat-visits-week')!.textContent = formatNumber(weekly.count);
+		setComparison('stat-visits-today-change', stats.visitsToday, stats.visitsYesterday, 'vs yesterday');
+		setComparison('stat-visits-week-change', weekly.count, stats.visitsPreviousWeek, 'vs previous 7 days');
+		const onlineShare = stats.totalUsers ? (stats.onlineUsers / stats.totalUsers) * 100 : 0;
+		if (el('stat-online-share')) {
+			el('stat-online-share')!.textContent = `${onlineShare.toFixed(1)}% of known users`;
+		}
+
 
 		if (t?.channel) {
 			const trendEl = el('stat-trending');
@@ -144,10 +261,18 @@ async function loadScrapeStatus(status?: any) {
 				badge.className = 'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
 				dot.className = 'w-2 h-2 rounded-full bg-blue-500 animate-pulse';
 				text.textContent = 'Scraping...';
+			} else if (s.rateLimitsHit > 0) {
+				badge.className = 'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300';
+				dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+				text.textContent = 'Rate limited';
+			} else if (s.lastCycleDurationMs > s.intervalMs) {
+				badge.className = 'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+				dot.className = 'w-2 h-2 rounded-full bg-orange-500';
+				text.textContent = 'Delayed';
 			} else {
 				badge.className = 'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
 				dot.className = 'w-2 h-2 rounded-full bg-green-500';
-				text.textContent = 'Idle';
+				text.textContent = 'Healthy';
 			}
 		}
 
@@ -427,10 +552,15 @@ async function initChannelVisitsPanel() {
 		}
 	});
 
-	select.addEventListener('change', async (event) => {
-		selectedChannel = (event.target as HTMLSelectElement).value;
+	select.addEventListener('change', () => broadcastChannel(select.value));
+	window.addEventListener('dashboard-channel-change', async (event) => {
+		const channel = (event as CustomEvent<{ channel: string }>).detail.channel;
+		if (!channels.includes(channel)) return;
+		selectedChannel = channel;
+		select.value = channel;
 		channelList!.innerHTML = '';
 		currentPage = 1;
+		visitsContainer?.scrollTo({ top: 0 });
 		await loadVisits(selectedChannel, currentPage);
 	});
 }
@@ -507,11 +637,16 @@ async function initChannelUsersPanel() {
 	let selectedChannel = channels[0] as string;
 	void loadVisits(selectedChannel, currentPage, initial.users);
 
-	select.addEventListener('change', async (event) => {
-		selectedChannel = (event.target as HTMLSelectElement).value;
+	select.addEventListener('change', () => broadcastChannel(select.value));
+	window.addEventListener('dashboard-channel-change', async (event) => {
+		const channel = (event as CustomEvent<{ channel: string }>).detail.channel;
+		if (!channels.includes(channel)) return;
+		selectedChannel = channel;
+		select.value = channel;
 		channelList!.innerHTML = '';
 		currentPage = 1;
 		hasMore = true;
+		faqContainer?.scrollTo({ top: 0 });
 		await loadVisits(selectedChannel, currentPage);
 	});
 
@@ -530,25 +665,53 @@ Promise.all([initChannelVisitsPanel(), initChannelUsersPanel()]);
 if (document.getElementById('user-input')) {
 	const userInput = document.getElementById('user-input') as HTMLInputElement;
 	const userList = document.getElementById('user-list');
+	const searchButton = document.getElementById('user-search-button') as HTMLButtonElement | null;
 
-	userInput.addEventListener('keydown', async (event: any) => {
-		if (event.key === 'Enter') {
-			const user = (event.target as HTMLInputElement).value;
-			const userInfo = document.getElementById('user-info') as HTMLElement;
-			userInfo.innerHTML = '';
-			if (userList) showSkeletons(userList, 4);
+	async function searchUser() {
+		const user = userInput.value.trim().replace(/^@/, '');
+		const userInfo = document.getElementById('user-info') as HTMLElement;
+		if (!user) {
+			userInfo.textContent = 'Enter a user handle to search.';
+			userInfo.className = 'text-sm font-medium text-center mb-2 text-amber-600 dark:text-amber-400';
+			userInput.focus();
+			return;
+		}
 
+		userInfo.innerHTML = '';
+		if (userList) showSkeletons(userList, 4);
+		if (searchButton) {
+			searchButton.disabled = true;
+			searchButton.textContent = 'Searching...';
+		}
+
+		try {
 			const userData = await fetch(`${API_BASE}/api/user/getByName?name=@${user}`);
+			if (!userData.ok) throw new Error(`Search returned ${userData.status}`);
 			const userDataJson = await userData.json();
 			const isAnyUserOnline = userDataJson.some((u: any) => u.online);
 
-			if (userInfo) {
+			if (userDataJson.length) {
 				userInfo.innerHTML = `<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full ${isAnyUserOnline ? 'bg-green-500' : 'bg-red-400'}"></span>${isAnyUserOnline ? 'Online' : 'Offline'}</span>`;
 				userInfo.className = `text-sm font-medium text-center mb-2 ${isAnyUserOnline ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`;
+			} else {
+				userInfo.textContent = `No user found for @${user}.`;
+				userInfo.className = 'text-sm font-medium text-center mb-2 text-gray-500 dark:text-gray-400';
 			}
 
 			await renderUserVisitsByQuery({ name: user });
+		} catch (error) {
 			clearSkeletons(userList as HTMLElement);
+			userInfo.textContent = error instanceof Error ? error.message : 'Search failed. Please try again.';
+			userInfo.className = 'text-sm font-medium text-center mb-2 text-red-600 dark:text-red-400';
+		} finally {
+			if (searchButton) {
+				searchButton.disabled = false;
+				searchButton.textContent = 'Search';
+			}
 		}
-	});
+	}
+
+	userInput.classList.add('pr-20');
+	userInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') void searchUser(); });
+	searchButton?.addEventListener('click', () => void searchUser());
 }

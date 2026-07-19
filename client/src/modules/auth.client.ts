@@ -1,4 +1,4 @@
-const API_BASE = '';
+const API_BASE = 'https://api.epmarketingandresearch.com';
 const TOKEN_KEY = 'ep_session_token';
 const ACCOUNT_KEY = 'ep_account';
 
@@ -7,6 +7,14 @@ export interface Account {
   email: string;
   display_name: string;
   role: string;
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`Authentication service returned ${response.status}. Please try again shortly.`);
+  }
+  return await response.json() as T;
 }
 
 export function getToken(): string | null {
@@ -48,7 +56,7 @@ export async function validateSession(): Promise<Account | null> {
       clearSession();
       return null;
     }
-    const data = await resp.json();
+    const data = await readJson<{ account: Account }>(resp);
     // Update cached account info
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify(data.account));
     return data.account as Account;
@@ -63,7 +71,7 @@ export async function login(email: string, password: string): Promise<{ token: s
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  const data = await resp.json();
+  const data = await readJson<{ token: string; account: Account; error?: string }>(resp);
   if (!resp.ok) throw new Error(data.error || 'Login failed');
   saveSession(data.token, data.account);
   return data;
@@ -75,7 +83,7 @@ export async function signup(invite_token: string, email: string, password: stri
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ invite_token, email, password, display_name }),
   });
-  const data = await resp.json();
+  const data = await readJson<{ token: string; account: Account; error?: string }>(resp);
   if (!resp.ok) throw new Error(data.error || 'Signup failed');
   saveSession(data.token, data.account);
   return data;
@@ -96,5 +104,5 @@ export async function logout(): Promise<void> {
 
 export async function validateInvite(token: string): Promise<{ valid: boolean; email?: string; role?: string; error?: string }> {
   const resp = await fetch(`${API_BASE}/api/auth/invite/validate?token=${encodeURIComponent(token)}`);
-  return await resp.json();
+  return await readJson<{ valid: boolean; email?: string; role?: string; error?: string }>(resp);
 }

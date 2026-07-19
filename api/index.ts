@@ -1066,7 +1066,9 @@ const server = Bun.serve({
           (SELECT COUNT(*) FROM channels) AS totalChannels,
           (SELECT COALESCE(seq, 0) FROM sqlite_sequence WHERE name = 'visits') AS totalVisits,
           (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day = date('now')) AS visitsToday,
-          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-6 days')) AS visitsThisWeek
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day = date('now', '-1 day')) AS visitsYesterday,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-6 days')) AS visitsThisWeek,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-13 days') AND day < date('now', '-6 days')) AS visitsPreviousWeek
       `).get() as any;
       const trending = db.query(`
         WITH this_week AS (
@@ -1269,7 +1271,9 @@ const server = Bun.serve({
           (SELECT COUNT(*) FROM channels) AS totalChannels,
           (SELECT COALESCE(seq, 0) FROM sqlite_sequence WHERE name = 'visits') AS totalVisits,
           (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day = date('now')) AS visitsToday,
-          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-6 days')) AS visitsThisWeek
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day = date('now', '-1 day')) AS visitsYesterday,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-6 days')) AS visitsThisWeek,
+          (SELECT COALESCE(SUM(visit_count), 0) FROM channel_visit_daily WHERE day >= date('now', '-13 days') AND day < date('now', '-6 days')) AS visitsPreviousWeek
       `).get() as any;
 
       return new Response(JSON.stringify({
@@ -1278,7 +1282,9 @@ const server = Bun.serve({
         totalChannels: stats?.totalChannels || 0,
         totalVisits: stats?.totalVisits || 0,
         visitsToday: stats?.visitsToday || 0,
+        visitsYesterday: stats?.visitsYesterday || 0,
         visitsThisWeek: stats?.visitsThisWeek || 0,
+        visitsPreviousWeek: stats?.visitsPreviousWeek || 0,
       }), {
         headers: {
           "Content-Type": "application/json",
