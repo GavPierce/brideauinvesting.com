@@ -1,9 +1,24 @@
 /* eslint-disable max-lines */
 
-import ApexCharts from 'apexcharts';
-import { animate } from 'motion';
+const API_BASE = '';
 
-const API_BASE = 'https://api.epmarketingandresearch.com';
+type InitialDashboard = {
+	channels: string[];
+	stats: any;
+	weekly: { count: number };
+	trending: any;
+	topChannels: { channel: string; visit_count: number }[];
+	initialChannel: string | null;
+	visits: any[];
+	users: any[];
+	scrapeStatus: any;
+};
+
+const initialDashboardReady = fetch(`${API_BASE}/api/dashboard/initial?days=7`)
+	.then((response) => {
+		if (!response.ok) throw new Error(`Dashboard API returned ${response.status}`);
+		return response.json() as Promise<InitialDashboard>;
+	});
 
 // ─── Skeleton loader utilities ───────────────────────────────────────────────
 const skeletonsByList = new Map<HTMLElement, HTMLElement[]>();
@@ -21,7 +36,7 @@ function showSkeletons(listEl: HTMLElement, count: number) {
 			</div>`;
 		listEl.appendChild(sk);
 		batch.push(sk);
-		animate(sk, { opacity: [0.4, 1] }, { duration: 1, direction: 'alternate', repeat: Infinity });
+		sk.classList.add('animate-pulse');
 	}
 	skeletonsByList.set(listEl, batch);
 }
@@ -76,48 +91,29 @@ function formatDuration(ms: number): string {
 
 // ─── Fetch channels list (non-blocking) ─────────────────────────────────────
 let channels: string[] = [];
-const channelsReady = fetch(`${API_BASE}/api/getChannels`)
-	.then(r => r.json())
-	.then((obj: { channels: string[] }) => {
-		channels = obj.channels.sort();
-		return channels;
-	});
+const channelsReady = initialDashboardReady.then((data) => {
+	channels = data.channels;
+	return channels;
+});
 
 // ─── 1. Stats Overview Cards ─────────────────────────────────────────────────
 async function loadStatsOverview() {
 	try {
-		const [overviewResp, weeklyResp, trendingResp] = await Promise.all([
-			fetch(`${API_BASE}/api/stats/overview`),
-			fetch(`${API_BASE}/api/visits/totalWeekly`),
-			fetch(`${API_BASE}/api/visits/trendingChannel`),
-		]);
+		const { stats, weekly, trending: t } = await initialDashboardReady;
+		const el = (id: string) => document.getElementById(id);
+		if (el('stat-visits-today')) el('stat-visits-today')!.textContent = formatNumber(stats.visitsToday);
+		if (el('stat-online')) el('stat-online')!.textContent = formatNumber(stats.onlineUsers);
+		if (el('stat-total-users')) el('stat-total-users')!.textContent = formatNumber(stats.totalUsers);
+		if (el('stat-visits-week')) el('stat-visits-week')!.textContent = formatNumber(weekly.count);
 
-		if (overviewResp.ok) {
-			const stats = await overviewResp.json();
-			const el = (id: string) => document.getElementById(id);
-			if (el('stat-visits-today')) el('stat-visits-today')!.textContent = formatNumber(stats.visitsToday);
-			if (el('stat-online')) el('stat-online')!.textContent = formatNumber(stats.onlineUsers);
-			if (el('stat-total-users')) el('stat-total-users')!.textContent = formatNumber(stats.totalUsers);
-			if (el('stat-channels')) el('stat-channels')!.textContent = formatNumber(stats.totalChannels);
-		}
-
-		if (weeklyResp.ok) {
-			const weekly = await weeklyResp.json();
-			const el = document.getElementById('stat-visits-week');
-			if (el) el.textContent = formatNumber(weekly.count);
-		}
-
-		if (trendingResp.ok) {
-			const t = await trendingResp.json();
-			if (t && t.channel) {
-				const trendEl = document.getElementById('stat-trending');
-				const pctEl = document.getElementById('stat-trending-pct');
-				if (trendEl) trendEl.textContent = t.channel.toUpperCase();
-				if (pctEl) {
-					const sign = t.delta >= 0 ? '+' : '';
-					const pct = t.pct_change != null ? `${sign}${t.pct_change}%` : '';
-					pctEl.textContent = pct ? `${sign}${t.delta} visits (${pct})` : `${sign}${t.delta} visits`;
-				}
+		if (t?.channel) {
+			const trendEl = el('stat-trending');
+			const pctEl = el('stat-trending-pct');
+			if (trendEl) trendEl.textContent = t.channel.toUpperCase();
+			if (pctEl) {
+				const sign = t.delta >= 0 ? '+' : '';
+				const pct = t.pct_change != null ? `${sign}${t.pct_change}%` : '';
+				pctEl.textContent = pct ? `${sign}${t.delta} visits (${pct})` : `${sign}${t.delta} visits`;
 			}
 		}
 	} catch (e) {
@@ -125,14 +121,17 @@ async function loadStatsOverview() {
 	}
 }
 
-loadStatsOverview();
+void loadStatsOverview();
 
 // ─── 2. Scraper Status Panel ─────────────────────────────────────────────────
-async function loadScrapeStatus() {
+async function loadScrapeStatus(status?: any) {
 	try {
-		const resp = await fetch(`${API_BASE}/api/scrapeStatus`);
-		if (!resp.ok) return;
-		const s = await resp.json();
+		let s = status;
+		if (!s) {
+			const resp = await fetch(`${API_BASE}/api/scrapeStatus`);
+			if (!resp.ok) return;
+			s = await resp.json();
+		}
 
 		const el = (id: string) => document.getElementById(id);
 
@@ -188,17 +187,20 @@ async function loadScrapeStatus() {
 	}
 }
 
-loadScrapeStatus();
-setInterval(loadScrapeStatus, 10000);
+void initialDashboardReady.then((data) => loadScrapeStatus(data.scrapeStatus));
+setInterval(() => void loadScrapeStatus(), 10000);
 
 // ─── 3. Top Channels Bar Chart ───────────────────────────────────────────────
-let topChannelsChart: ApexCharts | null = null;
+let topChannelsChart: any = null;
 
-async function loadTopChannelsChart(days: number = 7) {
+async function loadTopChannelsChart(days: number = 7, suppliedData?: { channel: string; visit_count: number }[]) {
 	try {
-		const resp = await fetch(`${API_BASE}/api/visits/topChannels?days=${days}&limit=15`);
-		if (!resp.ok) return;
-		const data = await resp.json() as { channel: string; visit_count: number }[];
+		let data = suppliedData;
+		if (!data) {
+			const resp = await fetch(`${API_BASE}/api/visits/topChannels?days=${days}&limit=15`);
+			if (!resp.ok) return;
+			data = await resp.json() as { channel: string; visit_count: number }[];
+		}
 
 		const isDark = document.documentElement.classList.contains('dark');
 
@@ -255,6 +257,7 @@ async function loadTopChannelsChart(days: number = 7) {
 		if (topChannelsChart) {
 			topChannelsChart.updateOptions(options);
 		} else {
+			const { default: ApexCharts } = await import('apexcharts');
 			topChannelsChart = new ApexCharts(chartEl, options);
 			topChannelsChart.render();
 		}
@@ -263,7 +266,7 @@ async function loadTopChannelsChart(days: number = 7) {
 	}
 }
 
-loadTopChannelsChart(7);
+void initialDashboardReady.then((data) => loadTopChannelsChart(7, data.topChannels));
 
 // Day-picker buttons
 let activeDays = 7;
@@ -354,7 +357,7 @@ async function initChannelVisitsPanel() {
 	await channelsReady;
 
 	let currentPage = 1;
-	const limit = 100;
+	const limit = 50;
 	let loading = false;
 
 	const select = document.getElementById('channel-tabs1') as HTMLSelectElement;
@@ -373,10 +376,10 @@ async function initChannelVisitsPanel() {
 		return await response.json();
 	}
 
-	async function loadVisits(channel: string, page: number) {
+	async function loadVisits(channel: string, page: number, suppliedData?: any[]) {
 		loading = true;
 		if (channelList) showSkeletons(channelList, 6);
-		const data = await fetchVisits(channel, page);
+		const data = suppliedData ?? await fetchVisits(channel, page);
 		clearSkeletons(channelList as HTMLElement);
 
 		data.forEach((visit: any) => {
@@ -413,8 +416,9 @@ async function initChannelVisitsPanel() {
 		loading = false;
 	}
 
+	const initial = await initialDashboardReady;
 	let selectedChannel = channels[0] as string;
-	loadVisits(selectedChannel, currentPage);
+	void loadVisits(selectedChannel, currentPage, initial.visits);
 
 	visitsContainer?.addEventListener('scroll', async () => {
 		if (visitsContainer.scrollTop + visitsContainer.clientHeight >= visitsContainer.scrollHeight - 100 && !loading) {
@@ -440,6 +444,11 @@ async function initChannelUsersPanel() {
 	const select = document.getElementById('channel-tabs2') as HTMLSelectElement;
 	const channelList = document.getElementById('channel-list');
 	const faqContainer = document.getElementById('faq');
+	let currentPage = 1;
+	const limit = 50;
+	let loading = false;
+	let hasMore = true;
+
 
 	channels.forEach((channel) => {
 		const option = document.createElement('option');
@@ -448,15 +457,16 @@ async function initChannelUsersPanel() {
 		select.appendChild(option);
 	});
 
-	async function fetchVisits(channel: string) {
-		const response = await fetch(`${API_BASE}/api/usersByChannel?channel=${channel}`);
-		const data = await response.json();
-		return data.slice(0, 500);
+	async function fetchVisits(channel: string, page: number) {
+		const response = await fetch(`${API_BASE}/api/usersByChannel?channel=${channel}&limit=${limit}&page=${page}`);
+		return await response.json();
 	}
 
-	async function loadVisits(channel: string) {
-		if (channelList) showSkeletons(channelList, 6);
-		const data = await fetchVisits(channel);
+	async function loadVisits(channel: string, page: number, suppliedData?: any[]) {
+		loading = true;
+		if (channelList && !suppliedData) showSkeletons(channelList, 6);
+		const data = suppliedData ?? await fetchVisits(channel, page);
+		hasMore = data.length === limit;
 		clearSkeletons(channelList as HTMLElement);
 
 		data.forEach((visit: any) => {
@@ -490,23 +500,25 @@ async function initChannelUsersPanel() {
 
 			channelList?.appendChild(li);
 		});
+		loading = false;
 	}
 
+	const initial = await initialDashboardReady;
 	let selectedChannel = channels[0] as string;
-	loadVisits(selectedChannel);
+	void loadVisits(selectedChannel, currentPage, initial.users);
 
 	select.addEventListener('change', async (event) => {
 		selectedChannel = (event.target as HTMLSelectElement).value;
 		channelList!.innerHTML = '';
-		await loadVisits(selectedChannel);
+		currentPage = 1;
+		hasMore = true;
+		await loadVisits(selectedChannel, currentPage);
 	});
 
-	let loading = false;
 	faqContainer?.addEventListener('scroll', async () => {
-		if (faqContainer.scrollTop + faqContainer.clientHeight >= faqContainer.scrollHeight - 100 && !loading) {
-			loading = true;
-			await loadVisits(selectedChannel);
-			loading = false;
+		if (faqContainer.scrollTop + faqContainer.clientHeight >= faqContainer.scrollHeight - 100 && !loading && hasMore) {
+			currentPage++;
+			await loadVisits(selectedChannel, currentPage);
 		}
 	});
 }
